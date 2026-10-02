@@ -1,4 +1,6 @@
 import { useState } from 'preact/hooks';
+import { PageHeader } from '../../components/PageHeader';
+import { IconDownload, IconImage, IconLayers, IconShield, IconStorage, IconUpload } from '../../components/Icons';
 import { Modal } from '../../components/Modal';
 import {
   backupFileName,
@@ -80,14 +82,16 @@ export function BackupScreen() {
 
   return (
     <div class="stack">
-      <a class="btn ghost" href="#/settings">
-        ‹ Ayarlar
-      </a>
-      <h1>Yedekleme</h1>
+      <PageHeader title="Yedekleme" back={{ href: '#/settings', label: 'Ayarlar' }} />
 
-      <section class="card orange small">
-        <strong>Neden önemli?</strong>
-        <ul style={{ margin: '6px 0 0', paddingLeft: '18px' }}>
+      <section class="card orange">
+        <div class="row" style={{ gap: 'var(--s-3)', marginBottom: 'var(--s-2)' }}>
+          <div class="status-icon orange">
+            <IconShield aria-hidden="true" />
+          </div>
+          <strong class="headline">Neden önemli?</strong>
+        </div>
+        <ul class="callout muted" style={{ margin: '0', paddingLeft: '20px' }}>
           <li>Veriler sadece bu telefonda durur. Uygulama silinirse, Safari verileri temizlenirse ya da telefon değişirse kalıcı olarak gider.</li>
           <li>iCloud yedeği bu verileri güvenilir şekilde kapsamaz.</li>
           <li>Düzenli olarak dışa aktar ve dosyayı Dosyalar / iCloud Drive’a kaydet.</li>
@@ -95,7 +99,10 @@ export function BackupScreen() {
       </section>
 
       <section class="card stack">
-        <h2>Dışa aktar</h2>
+        <h2 class="card-title">
+          <IconUpload aria-hidden="true" />
+          Dışa aktar
+        </h2>
         <button
           class="btn primary big block"
           disabled={busy}
@@ -111,13 +118,14 @@ export function BackupScreen() {
             }
           }}
         >
+          <IconDownload aria-hidden="true" />
           Sadece veriler (JSON)
         </button>
-        <p class="small muted" style={{ margin: '0px' }}>
+        <p class="small faint" style={{ margin: '0px' }}>
           Seanslar, ölçümler, program ve ayarlar. Küçük bir dosya.
         </p>
         <button
-          class="btn big block"
+          class="btn tinted big block"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -133,16 +141,21 @@ export function BackupScreen() {
             }
           }}
         >
+          <IconImage aria-hidden="true" />
           Medya dahil tam yedek (ZIP)
         </button>
-        <p class="small muted" style={{ margin: '0px' }}>
+        <p class="small faint" style={{ margin: '0px' }}>
           Röntgen ve fotoğraflar da dahil. Büyük olabilir; ayda bir ya da yeni görsel ekledikten sonra al.
         </p>
       </section>
 
       <section class="card stack">
-        <h2>İçe aktar</h2>
+        <h2 class="card-title">
+          <IconDownload aria-hidden="true" />
+          İçe aktar
+        </h2>
         <label class="btn block big">
+          <IconLayers aria-hidden="true" />
           Yedek dosyası seç
           <input
             class="sr-only"
@@ -194,7 +207,10 @@ export function BackupScreen() {
 
       {snapshot && (
         <section class="card stack">
-          <h2>Otomatik yedek</h2>
+          <h2 class="card-title">
+            <IconStorage aria-hidden="true" />
+            Otomatik yedek
+          </h2>
           <p class="small muted" style={{ margin: '0px' }}>
             Son "Değiştir" işleminden önceki veriler ({new Date(snapshot.file.exportedAt).toLocaleString('tr-TR')}): {snapshot.file.data.sessions.length} seans
             {snapshot.media ? `, ${snapshot.media.length} görsel` : ''}.

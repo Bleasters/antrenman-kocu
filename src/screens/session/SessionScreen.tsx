@@ -24,7 +24,20 @@ import { allowScreenOff, keepScreenOn } from '../../platform/wakeLock';
 import { navigate } from '../../router';
 import { prefs, returnToSession, sessionActive, sessionPick, sessionRegions } from '../../state';
 import { pickedExercises, togglePick } from '../../logic/sessionPick';
-import { IconNote } from '../../components/Icons';
+import { EmptyState } from '../../components/EmptyState';
+import {
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconClose,
+  IconList,
+  IconNote,
+  IconPlaySmall,
+  IconPlus,
+  IconRuler,
+  IconWarn,
+} from '../../components/Icons';
+import { PageHeader } from '../../components/PageHeader';
 import { dose } from '../settings/ProgramList';
 import { ExerciseStep } from './ExerciseStep';
 import { goToExercise } from './flow';
@@ -52,18 +65,26 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
   };
   return (
     <div class="session-body">
-      <h1>Yeni seans</h1>
-      <p class="muted">Bugün hangi bölgeleri çalışacaksın?</p>
+      <PageHeader title="Yeni seans" overline="Seans" />
+      <p class="muted" style={{ margin: '0 0 var(--s-4)' }}>
+        Bugün hangi bölgeleri çalışacaksın?
+      </p>
       <div class="stack">
         {REGIONS.map((r) => {
           const n = exercises.filter((e) => e.region === r && e.active).length;
           const any = exercises.some((e) => e.region === r);
           return (
-            <button key={r} class={`btn big block${sel.includes(r) ? ' selected' : ''}`} aria-pressed={sel.includes(r)} disabled={!any} onClick={() => toggle(r)}>
+            <button key={r} class={`region-option region-${r}`} aria-pressed={sel.includes(r)} disabled={!any} onClick={() => toggle(r)}>
+              <span class="region-swatch" aria-hidden="true" />
               <span class="grow" style={{ textAlign: 'left' }}>
-                {REGION_LABEL[r]}
+                <span class="headline" style={{ display: 'block' }}>
+                  {REGION_LABEL[r]}
+                </span>
+                <span class="small muted">{n} egzersiz</span>
               </span>
-              <span class="small">{n} egzersiz</span>
+              <span class="region-check" aria-hidden="true">
+                <IconCheck />
+              </span>
             </button>
           );
         })}
@@ -82,12 +103,12 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
               .map((e) => {
                 const on = chosen.some((c) => c.id === e.id);
                 return (
-                  <li key={e.id}>
-                    <label class="row grow" style={{ minHeight: '48px', cursor: 'pointer', minWidth: '0px' }}>
+                  <li key={e.id} class={`region-${e.region}`}>
+                    <label class="row grow" style={{ minHeight: '48px', cursor: 'pointer', minWidth: '0px', gap: 'var(--s-3)' }}>
                       <input
                         type="checkbox"
+                        class="pick-check"
                         checked={on}
-                        style={{ width: '24px', height: '24px', accentColor: 'var(--accent)', flex: 'none' }}
                         onChange={() => (sessionPick.value = togglePick(pick, e))}
                       />
                       <span style={{ minWidth: '0px', opacity: on ? 1 : 0.6 }}>
@@ -99,7 +120,7 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
                         </span>
                       </span>
                     </label>
-                    <button class="icon-btn" aria-label={`${e.name} düzenle`} title="Düzenle" onClick={() => openEditor(`/settings/program/${e.id}`)}>
+                    <button class="icon-btn" style={{ background: 'transparent' }} aria-label={`${e.name} düzenle`} title="Düzenle" onClick={() => openEditor(`/settings/program/${e.id}`)}>
                       <IconNote />
                     </button>
                   </li>
@@ -108,15 +129,17 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
           </ul>
         </>
       )}
-      <div class="bottom-actions two" style={{ paddingTop: '12px' }}>
-        <button class="btn" onClick={() => openEditor('/settings/program')}>
+      <div class="bottom-actions two" style={{ paddingTop: 'var(--s-3)' }}>
+        <button class="btn compact-text" onClick={() => openEditor('/settings/program')}>
+          <IconList aria-hidden="true" />
           Programı düzenle
         </button>
-        <button class="btn" onClick={() => openEditor('/settings/program/new')}>
-          + Yeni hareket
+        <button class="btn compact-text" onClick={() => openEditor('/settings/program/new')}>
+          <IconPlus aria-hidden="true" />
+          Yeni hareket
         </button>
       </div>
-      {exercises.length === 0 && <p class="card grey">Programda hareket yok. "Yeni hareket" ile ekle.</p>}
+      {exercises.length === 0 && <EmptyState icon={IconList} title="Programda hareket yok" text={'"Yeni hareket" ile ilk hareketini ekle.'} />}
       <div class="spacer" />
       {sel.length > 0 && (
         <p class="center small muted" style={{ margin: '0 0 6px' }}>
@@ -134,6 +157,7 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
           onStart(sel, chosen);
         }}
       >
+        <IconPlaySmall aria-hidden="true" fill="currentColor" />
         Seansı başlat
       </button>
     </div>
@@ -163,10 +187,12 @@ function PainStep({
   const complete = session.regions.every((r) => map[r] != null);
   return (
     <div class="session-body">
-      <h1>{title}</h1>
-      <p class="muted">{hint}</p>
+      <PageHeader title={title} />
+      <p class="muted" style={{ margin: '0 0 var(--s-4)' }}>
+        {hint}
+      </p>
       {session.regions.map((r) => (
-        <div class="card" key={r}>
+        <div class={`card region-${r}`} key={r}>
           <PainInput label={REGION_LABEL[r]} value={map[r]} onChange={(v) => onChange({ ...session, [field]: { ...map, [r]: v } })} />
         </div>
       ))}
@@ -185,7 +211,10 @@ function RedFlagsAndNotes({ session, onChange }: { session: Session; onChange: (
   const toggle = (f: RedFlag) => onChange({ ...session, redFlags: flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f] });
   return (
     <>
-      <h2 style={{ marginTop: '16px' }}>Kırmızı bayraklar</h2>
+      <h2 class="card-title" style={{ marginTop: 'var(--s-6)' }}>
+        <IconWarn aria-hidden="true" />
+        Kırmızı bayraklar
+      </h2>
       <p class="small muted">Varsa işaretle. Herhangi biri işaretlenirse sonuç "Dur — doktoruna/fizyoterapistine danış" olur.</p>
       {RED_FLAGS.map((f) => (
         <label key={f} class={`check-row${flags.includes(f) ? ' checked' : ''}`}>
@@ -193,7 +222,7 @@ function RedFlagsAndNotes({ session, onChange }: { session: Session; onChange: (
           <span>{RED_FLAG_LABEL[f]}</span>
         </label>
       ))}
-      <label class="field" style={{ marginTop: '16px' }}>
+      <label class="field" style={{ marginTop: 'var(--s-5)' }}>
         <span>Not (isteğe bağlı)</span>
         <textarea value={session.notes ?? ''} onInput={(e) => onChange({ ...session, notes: (e.target as HTMLTextAreaElement).value })} />
       </label>
@@ -251,9 +280,10 @@ export function SessionScreen() {
   if (result && session) {
     return (
       <div class="session-body">
-        <h1>Seans kaydedildi</h1>
+        <PageHeader title="Seans kaydedildi" overline="Tamamlandı" />
         <RuleCard ev={result} />
-        <a class="btn block big" href="#/rom" style={{ marginTop: '12px' }}>
+        <a class="btn tinted block big" href="#/rom" style={{ marginTop: 'var(--s-3)' }}>
+          <IconRuler aria-hidden="true" />
           ROM ölç (antrenman sonrası)
         </a>
         <div class="spacer" />
@@ -293,15 +323,18 @@ export function SessionScreen() {
     <div onClickCapture={gestureFeatures}>
       <div class="session-top">
         <button class="btn ghost" onClick={() => setExitOpen(true)}>
-          ✕ Çık
+          <IconClose aria-hidden="true" />
+          Çık
         </button>
         {progress.step === 'exercise' && (
           <div class="row">
             <button class="btn ghost" disabled={progress.exIndex === 0} onClick={() => update(session, goToExercise(session, progress, progress.exIndex - 1))}>
-              ‹ Önceki
+              <IconChevronLeft aria-hidden="true" />
+              Önceki
             </button>
             <button class="btn ghost" onClick={() => update(session, goToExercise(session, progress, progress.exIndex + 1))}>
-              Atla ›
+              Atla
+              <IconChevronRight aria-hidden="true" />
             </button>
           </div>
         )}
@@ -314,7 +347,7 @@ export function SessionScreen() {
           session={session}
           field="painBefore"
           onChange={(s) => update(s, progress)}
-          cta={session.entries.length ? 'Egzersizlere geç ›' : 'Devam ›'}
+          cta={session.entries.length ? 'Egzersizlere geç' : 'Devam'}
           onNext={() => update(session, goToExercise(session, progress, 0))}
         />
       )}

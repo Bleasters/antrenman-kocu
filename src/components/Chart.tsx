@@ -4,9 +4,13 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 export interface SeriesDef {
   label: string;
-  /** CSS variable name, e.g. '--series-1' */
+  /** CSS variable name, e.g. '--ankle' */
   colorVar: string;
   kind?: 'line' | 'bar';
+  /** dashed line (reference / comparison series) */
+  dashed?: boolean;
+  /** soft area fill under the line */
+  fill?: boolean;
 }
 
 interface Props {
@@ -45,15 +49,20 @@ export function Chart({ labels, series, values, yRange, height = 220, format = (
   useEffect(() => {
     const el = wrap.current;
     if (!el || n === 0) return;
-    const text = cssVar('--text-2');
-    const grid = cssVar('--border');
+    const text = cssVar('--chart-axis');
+    const grid = cssVar('--chart-grid');
+    const surface = cssVar('--surface');
     const xs = labels.map((_, i) => i);
-    const axis = { stroke: text, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid, width: 1 }, font: '12px system-ui' };
+    const font = `500 11px ${getComputedStyle(document.documentElement).getPropertyValue('--font') || 'system-ui'}`;
+    const axis = { stroke: text, grid: { stroke: grid, width: 1 }, ticks: { show: false }, border: { show: false }, font, gap: 6 };
     const opts: uPlot.Options = {
       width: el.clientWidth,
       height,
       legend: { show: false },
-      cursor: { drag: { x: false, y: false }, points: { size: 10 } },
+      cursor: {
+        drag: { x: false, y: false },
+        points: { size: 11, width: 2.5, stroke: () => surface, fill: (u, i) => (u.series[i].stroke as () => string)() },
+      },
       scales: {
         x: { time: false, range: [-0.5, Math.max(0.5, n - 0.5)] },
         y: yRange ? { range: yRange } : { range: (_u, _min, max) => [0, Math.max(1, Math.ceil(max * 1.15))] },
@@ -65,28 +74,30 @@ export function Chart({ labels, series, values, yRange, height = 220, format = (
           incrs: [1, 2, 3, 4, 5, 7, 10, 14, 20, 30, 50, 100],
           values: (_u, splits) => splits.map((i) => (Number.isInteger(i) && labels[i] ? labels[i] : '')),
         },
-        { ...axis, size: 36, values: (_u, splits) => splits.map((v) => (Number.isInteger(v) ? String(v) : '')) },
+        { ...axis, size: 30, grid: { ...axis.grid, show: true }, values: (_u, splits) => splits.map((v) => (Number.isInteger(v) ? String(v) : '')) },
       ],
       series: [
         {},
-        ...series.map((s, i) => {
+        ...series.map((s) => {
           const color = cssVar(s.colorVar);
           return s.kind === 'bar'
             ? {
                 label: s.label,
-                stroke: color,
+                stroke: () => color,
                 fill: color,
                 width: 0,
-                paths: uPlot.paths.bars!({ size: [0.6, 48] }),
+                paths: uPlot.paths.bars!({ size: [0.55, 36], radius: 0.25 }),
                 points: { show: false },
               }
             : {
                 label: s.label,
-                stroke: color,
-                width: 2.5,
+                stroke: () => color,
+                width: s.dashed ? 1.75 : 2.5,
                 spanGaps: true,
-                dash: i === 2 ? [6, 4] : undefined,
-                points: { show: true, size: 7, fill: color },
+                dash: s.dashed ? [5, 5] : undefined,
+                fill: s.fill ? `${color}22` : undefined,
+                paths: uPlot.paths.spline!(),
+                points: { show: n <= 16, size: s.dashed ? 0 : 6, width: 0, fill: color, stroke: color },
               };
         }),
       ],
@@ -132,7 +143,7 @@ export function Chart({ labels, series, values, yRange, height = 220, format = (
           const v = values[i][shown];
           return (
             <span key={s.label}>
-              <span class="sw" style={{ background: `var(${s.colorVar})` }} />
+              <span class={`sw${s.dashed ? ' dashed' : ''}`} style={{ background: `var(${s.colorVar})`, color: `var(${s.colorVar})` }} />
               {s.label}: <b>{v == null ? '–' : format(v)}</b>
             </span>
           );

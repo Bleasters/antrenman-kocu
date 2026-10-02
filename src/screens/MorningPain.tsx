@@ -1,4 +1,5 @@
 import { MorningPainCard } from '../components/MorningPainCard';
+import { PageHeader } from '../components/PageHeader';
 import { useSessions } from '../hooks';
 import { todayISO } from '../logic/dates';
 import { morningPainTarget } from '../logic/stats';
@@ -18,7 +19,7 @@ export function MorningPain() {
   }
   return (
     <div class="stack">
-      <h1>Sabah ağrısı</h1>
+      <PageHeader title="Sabah ağrısı" />
       {target ? (
         <MorningPainCard session={target} />
       ) : (

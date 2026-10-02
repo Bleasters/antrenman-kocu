@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { IconActivity, IconDownload } from './components/Icons';
 import { Modal } from './components/Modal';
 import { TabBar } from './components/TabBar';
 import { discardActiveSession, getActiveProgress } from './db/repo';
@@ -60,24 +61,30 @@ export function App() {
       <main class={`app${hideChrome ? ' no-tabs' : ''}`}>
         {needRefresh.value && !sessionActive.value && (
           <div class="banner info" role="status">
+            <IconDownload aria-hidden="true" />
             <span class="grow">Güncelleme var.</span>
             <button class="btn primary" onClick={applyUpdate}>
               Yenile
             </button>
           </div>
         )}
-        <Screen path={path} />
+        <div class="screen" key={path}>
+          <Screen path={path} />
+        </div>
       </main>
       {!hideChrome && <TabBar />}
 
       {onboarding && (
         <Modal title="RehabFlow'a hoş geldin">
+          <div class="status-icon accent" style={{ width: '56px', height: '56px', marginBottom: 'var(--s-4)' }}>
+            <IconActivity aria-hidden="true" />
+          </div>
           <p>
             <strong>Bu uygulama tıbbi tavsiye vermez.</strong> Uyarılar senin ayarladığın eşiklere göre çalışır.{' '}
             <strong>Eşikleri fizyoterapistinle birlikte belirle.</strong>
           </p>
           <p>Tüm veriler sadece bu cihazda durur. Uygulama silinirse veriler de gider; düzenli yedek al.</p>
-          <p class="small muted">
+          <p class="callout muted">
             iPhone'da Safari → Paylaş → <em>Ana Ekrana Ekle</em> ile kur. Safari sekmesinde girilen veriler ana ekran
             uygulamasında görünmez (ayrı depolama kullanırlar).
           </p>

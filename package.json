@@ -5,19 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/check-offline.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/check-offline.mjs && node scripts/check-contrast.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/make-icons.mjs",
     "check:offline": "node scripts/check-offline.mjs",
-    "test:e2e": "node scripts/e2e-smoke.mjs"
+    "test:e2e": "node scripts/e2e-smoke.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@preact/signals": "^2.11.3",
     "dexie": "^4.4.6",
     "fflate": "^0.8.3",
+    "lucide-preact": "^1.50.0",
     "preact": "^11.0.0",
     "uplot": "^1.6.32",
     "zod": "^4.6.5"

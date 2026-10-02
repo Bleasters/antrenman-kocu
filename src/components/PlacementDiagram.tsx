@@ -23,16 +23,16 @@ export function PlacementDiagram({ movement }: { movement: RomMovement }) {
     <svg viewBox="0 0 220 150" role="img" aria-label={`${MOVEMENTS[movement].label}: telefonun yerleşimi`} style={{ width: '100%', maxWidth: '320px', display: 'block', margin: '0 auto' }}>
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0 0 L10 5 L0 10 z" fill="var(--orange)" />
+          <path d="M0 0 L10 5 L0 10 z" fill="var(--text-2)" />
         </marker>
       </defs>
       <path d={s.prox} stroke="var(--text-2)" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.5" />
-      <path d={s.dist} stroke="var(--accent)" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.6" />
+      <path d={s.dist} stroke="var(--region, var(--accent))" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.6" />
       <g transform={`translate(${px} ${py}) rotate(${rot})`}>
         <rect x="-22" y="-8" width="44" height="16" rx="3" fill="var(--surface)" stroke="var(--text)" stroke-width="2" />
         <circle cx="17" cy="0" r="2" fill="var(--text)" />
       </g>
-      <path d={s.arrow} stroke="var(--orange)" stroke-width="3" fill="none" marker-end="url(#ah)" stroke-dasharray="5 4" />
+      <path d={s.arrow} stroke="var(--text-2)" stroke-width="3" fill="none" marker-end="url(#ah)" stroke-dasharray="5 4" />
     </svg>
   );
 }

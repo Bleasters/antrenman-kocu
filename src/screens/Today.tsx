@@ -11,8 +11,28 @@ import { isStandalone } from '../platform/storage';
 import { navigate } from '../router';
 import { prefs } from '../state';
 import { useState } from 'preact/hooks';
+import { EmptyState } from '../components/EmptyState';
+import {
+  IconActivity,
+  IconCalendar,
+  IconPhone,
+  IconPlaySmall,
+  IconRuler,
+  IconShield,
+  IconTimer,
+  IconTrendDown,
+  IconTrendFlat,
+  IconTrendUp,
+} from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 
-const TREND = { up: { arrow: '↑', text: 'artıyor' }, down: { arrow: '↓', text: 'azalıyor' }, flat: { arrow: '→', text: 'sabit' } };
+const TREND = {
+  up: { Icon: IconTrendUp, text: 'artıyor', cls: 'trend-up' },
+  down: { Icon: IconTrendDown, text: 'azalıyor', cls: 'trend-down' },
+  flat: { Icon: IconTrendFlat, text: 'sabit', cls: 'trend-flat' },
+};
+
+const dayFormatter = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Istanbul' });
 
 function BackupBand({ last, installedAt, days }: { last?: number; installedAt: number; days: number }) {
   const [, force] = useState(0);
@@ -21,6 +41,7 @@ function BackupBand({ last, installedAt, days }: { last?: number; installedAt: n
   const d = daysSinceBackup(last, installedAt, now);
   return (
     <div class="banner warn" role="status">
+      <IconShield aria-hidden="true" />
       <span class="grow">{last ? `Son yedek ${d} gün önce.` : `Henüz yedek almadın (${d} gündür kullanıyorsun).`}</span>
       <button
         class="btn ghost"
@@ -51,27 +72,33 @@ export function Today() {
   const evals = evaluateAll(sessions, settings, exercises ?? []);
   const lastEval = evals[evals.length - 1];
   const week = weeklySummary(sessions, today);
+  const trend = week.trend ? TREND[week.trend] : null;
 
   return (
     <div class="stack">
       <BackupBand last={settings.lastBackupAt} installedAt={settings.createdAt} days={settings.backupReminderDays} />
       {!isStandalone() && (
-        <div class="banner info small">
-          <span class="grow">
-            Ana ekrana ekle: Safari → Paylaş → <em>Ana Ekrana Ekle</em>. Safari sekmesindeki veriler ana ekran uygulamasına
-            taşınmaz.
+        <div class="banner info">
+          <IconPhone aria-hidden="true" />
+          <span class="grow small">
+            Ana ekrana ekle: Safari → Paylaş → <em>Ana Ekrana Ekle</em>. Safari sekmesindeki veriler ana ekran uygulamasına taşınmaz.
           </span>
         </div>
       )}
 
-      <header>
-        <h1>Bugün</h1>
-        <div class="muted">{formatLongTR(today)}</div>
-      </header>
+      <PageHeader title="Bugün" overline={dayFormatter.format(new Date())} />
+      <span class="sr-only">{formatLongTR(today)}</span>
 
       {active && (
         <section class="card accent">
-          <h2>Yarım kalan seans</h2>
+          <div class="row" style={{ gap: 'var(--s-3)', marginBottom: 'var(--s-4)' }}>
+            <div class="status-icon accent">
+              <IconTimer aria-hidden="true" />
+            </div>
+            <h2 class="grow" style={{ margin: '0', fontSize: 'var(--fs-headline)' }}>
+              Yarım kalan seans
+            </h2>
+          </div>
           <div class="bottom-actions two">
             <button class="btn danger" onClick={() => void discardActiveSession()}>
               Sil
@@ -87,12 +114,15 @@ export function Today() {
 
       {rom && romDue(rom, today) && (
         <section class="card">
-          <div class="row spread">
-            <div>
-              <h2 style={{ margin: '0px' }}>ROM ölçümü zamanı</h2>
+          <div class="row" style={{ gap: 'var(--s-3)' }}>
+            <div class="status-icon accent">
+              <IconRuler aria-hidden="true" />
+            </div>
+            <div class="grow">
+              <h2 style={{ margin: '0', fontSize: 'var(--fs-headline)' }}>ROM ölçümü zamanı</h2>
               <div class="small muted">Son 7 günde hareket açıklığı ölçmedin.</div>
             </div>
-            <a class="btn" href="#/rom">
+            <a class="btn tinted" href="#/rom">
               Ölç
             </a>
           </div>
@@ -102,26 +132,32 @@ export function Today() {
       {lastEval ? (
         <RuleCard ev={lastEval} />
       ) : (
-        <section class="card grey">
-          <h2>Henüz seans yok</h2>
-          <p class="muted">İlk seansından sonra ağrı izleme sonucu burada görünecek.</p>
-        </section>
+        <EmptyState icon={IconActivity} title="Henüz seans yok" text="İlk seansından sonra ağrı izleme sonucu burada görünecek." />
       )}
 
       <section class="card">
-        <h2>Son 7 gün</h2>
+        <div class="card-title" style={{ marginBottom: 'var(--s-3)' }}>
+          <IconCalendar aria-hidden="true" />
+          <h2 style={{ margin: '0', fontSize: 'var(--fs-headline)' }}>Son 7 gün</h2>
+        </div>
         <div class="stat-grid">
           <div>
+            <div class="stat-label">Seans</div>
             <div class="stat">{week.count}</div>
-            <div class="small muted">seans</div>
           </div>
           <div>
-            <div class="stat">
-              {week.avgThis ?? '–'} {week.trend && <span aria-hidden="true">{TREND[week.trend].arrow}</span>}
+            <div class="stat-label">Ort. ağrı</div>
+            <div class="stat row" style={{ gap: 'var(--s-1)' }}>
+              {week.avgThis ?? '–'}
+              {trend && (
+                <span class={trend.cls} aria-hidden="true" style={{ display: 'inline-flex' }}>
+                  <trend.Icon size={22} />
+                </span>
+              )}
             </div>
             <div class="small muted">
-              ort. ağrı{week.trend ? ` · ${TREND[week.trend].text}` : ''}
-              {week.avgPrev != null ? ` (önceki hafta ${week.avgPrev})` : ''}
+              {trend ? trend.text : ''}
+              {week.avgPrev != null ? `${trend ? ' · ' : ''}önceki hafta ${week.avgPrev}` : ''}
             </div>
           </div>
         </div>
@@ -129,6 +165,7 @@ export function Today() {
 
       <div class="sticky-cta">
         <button class="btn primary huge block" onClick={() => navigate('/session')}>
+          <IconPlaySmall aria-hidden="true" fill="currentColor" />
           {active ? 'Seansa devam et' : 'Seansı Başlat'}
         </button>
       </div>

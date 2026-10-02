@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { PageHeader } from '../components/PageHeader';
 import { PlacementDiagram } from '../components/PlacementDiagram';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
@@ -231,13 +232,16 @@ function RomItem({ m }: { m: RomMeasurement }) {
   const trials = trialsText(m.trials);
   return (
     <li style={{ flexWrap: 'wrap' }}>
+      <div class="rom-angle num">
+        {m.angleDeg}
+        <span>°</span>
+      </div>
       <div class="grow" style={{ minWidth: '0px' }}>
-        <strong>{m.angleDeg}°</strong> <span class="muted small">· {formatLongTR(m.date)} · {m.method === 'sensor' ? 'sensör' : 'manuel'}</span>
-        {m.timing && (
-          <span class="tag" style={{ marginLeft: '6px' }}>
-            {TIMING_SHORT[m.timing]}
-          </span>
-        )}
+        <div class="row wrap" style={{ gap: '6px' }}>
+          <span class="callout">{formatLongTR(m.date)}</span>
+          {m.timing && <span class="tag">{TIMING_SHORT[m.timing]}</span>}
+        </div>
+        <div class="small muted">{m.method === 'sensor' ? 'Sensör' : 'Manuel'}</div>
         {trials && <div class="small muted">{trials}</div>}
         {m.notes && !editing && (
           <div class="small">
@@ -249,6 +253,7 @@ function RomItem({ m }: { m: RomMeasurement }) {
         <>
           <button
             class="icon-btn"
+            style={{ background: 'transparent' }}
             aria-label={m.notes ? 'Notu düzenle' : 'Not ekle'}
             title={m.notes ? 'Notu düzenle' : 'Not ekle'}
             onClick={() => {
@@ -259,7 +264,7 @@ function RomItem({ m }: { m: RomMeasurement }) {
           >
             <IconNote />
           </button>
-          <button class="icon-btn" aria-label="Ölçümü sil" title="Sil" onClick={() => confirm('Bu ölçüm silinsin mi?') && void deleteRom(m.id)}>
+          <button class="icon-btn" style={{ background: 'transparent' }} aria-label="Ölçümü sil" title="Sil" onClick={() => confirm('Bu ölçüm silinsin mi?') && void deleteRom(m.id)}>
             <IconTrash />
           </button>
         </>
@@ -328,7 +333,7 @@ export function Rom() {
 
   return (
     <div class="stack">
-      <h1>ROM ölçümü</h1>
+      <PageHeader title="ROM ölçümü" />
       <div class="segmented" role="group" aria-label="Ölçüm zamanı">
         {(['pre', 'post'] as RomTiming[]).map((t) => (
           <button
@@ -385,8 +390,11 @@ export function Rom() {
         </div>
       </div>
 
-      <section class="card stack">
-        <h2>{info.label}</h2>
+      <section class={`card stack region-${region}`}>
+        <h2 class="row" style={{ gap: '0', fontSize: 'var(--fs-headline)' }}>
+          <span class="region-dot" aria-hidden="true" />
+          {info.label}
+        </h2>
         <PlacementDiagram movement={movement} />
         <p style={{ margin: '0px' }}>{info.placement}</p>
         <p class="small muted" style={{ margin: '0px' }}>
