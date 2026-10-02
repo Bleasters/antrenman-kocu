@@ -153,10 +153,13 @@ try {
     const r = (d * Math.PI) / 180;
     window.__g = [0, 9.81 * Math.sin(r), 9.81 * Math.cos(r)];
   }, deg);
+  // single button: "Sıfırla" first, then the same button turns into "Ölç"
+  if (await page.getByRole('button', { name: 'Ölç', exact: true }).count()) throw new Error('Ölç shown before zeroing');
   for (const deg of [20, 22, 40]) {
     await tilt(0);
-    await page.getByRole('button', { name: 'Sıfırla' }).click();
+    await page.getByRole('button', { name: 'Sıfırla', exact: true }).click();
     await page.getByText('Sıfırlandı.').waitFor();
+    if (await page.getByRole('button', { name: 'Sıfırla', exact: true }).count()) throw new Error('Sıfırla still shown after zeroing');
     await tilt(deg);
     await page.getByRole('button', { name: 'Ölç', exact: true }).click();
     if (deg !== 40) await page.getByRole('status').filter({ hasText: `${deg}°` }).waitFor();
