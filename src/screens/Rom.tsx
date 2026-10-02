@@ -4,7 +4,8 @@ import { PlacementDiagram } from '../components/PlacementDiagram';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
 import { deleteRom, saveRom, updateRomMeta } from '../db/repo';
-import { IconNote, IconTrash } from '../components/Icons';
+import { IconColumns, IconInfo, IconNote, IconTrash } from '../components/Icons';
+import { healthyReference, needsHealthyMeasurement, otherSide } from '../logic/symmetry';
 import { REGIONS, type Region, type RomMeasurement, type RomMovement, type RomTiming, type Side } from '../db/types';
 import { useSessions, useSettings } from '../hooks';
 import { formatLongTR, todayISO } from '../logic/dates';
@@ -313,12 +314,15 @@ export function Rom() {
   const [region, setRegion] = useState<Region>('ankle');
   const [movement, setMovement] = useState<RomMovement>('ankle_dorsiflexion');
   const [sideOverride, setSide] = useState<Side | null>(null);
+  const [askHealthy, setAskHealthy] = useState(false);
   const [mode, setMode] = useState<'sensor' | 'manual'>('sensor');
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState<{ text: string; id: string } | null>(null);
   const history = useLive(() => db.rom.where('movement').equals(movement).toArray(), [movement], []);
   if (!settings || !sessions) return null;
-  const side = sideOverride ?? settings.defaultSides[region];
+  const injured = settings.injuredSides[region];
+  const healthy = injured === 'none' ? null : otherSide(injured);
+  const side = sideOverride ?? (injured !== 'none' ? injured : settings.defaultSides[region]);
   const timing = timingOverride ?? defaultRomTiming(sessions, Date.now());
   const info = MOVEMENTS[movement];
   const sorted = history.filter((h) => h.side === side).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
@@ -328,6 +332,8 @@ export function Rom() {
   const store = async (angle: number, method: 'sensor' | 'manual', date: string, trials?: number[]) => {
     const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, timing, trials, notes: notes.trim() || undefined });
     setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}, ${TIMING_SHORT[timing].toLocaleLowerCase('tr')}): ${angle}° kaydedildi.` });
+    // after the injured side, offer the healthy side when its reference is missing or older than 30 days
+    setAskHealthy(injured !== 'none' && side === injured && needsHealthyMeasurement(history, movement, injured, todayISO()));
     setNotes('');
   };
 
@@ -357,6 +363,7 @@ export function Rom() {
               setRegion(r);
               setMovement(movementsFor(r)[0]);
               setSide(null);
+              setAskHealthy(false);
               setSaved(null);
             }}
           >
@@ -373,6 +380,7 @@ export function Rom() {
             onClick={() => {
               setMovement(m);
               setSaved(null);
+              setAskHealthy(false);
             }}
           >
             {MOVEMENTS[m].label.replace(/^(Bilek|Ayak bileği|Diz) /, '')}
@@ -383,12 +391,28 @@ export function Rom() {
         <span>Taraf</span>
         <div class="segmented" style={{ minWidth: '160px' }}>
           {(['left', 'right'] as Side[]).map((s) => (
-            <button key={s} aria-pressed={side === s} onClick={() => setSide(s)}>
+            <button
+              key={s}
+              aria-pressed={side === s}
+              onClick={() => {
+                setSide(s);
+                setAskHealthy(false);
+              }}
+            >
               {SIDE_LABEL[s]}
             </button>
           ))}
         </div>
       </div>
+      {healthy && (
+        <div class={`row region-${region}`} style={{ gap: 'var(--s-2)', alignItems: 'flex-start', marginTop: 'var(--s-2)' }}>
+          <IconInfo aria-hidden="true" size={18} style={{ color: 'var(--text-3)', flex: 'none', marginTop: '2px' }} />
+          <p class="small muted" style={{ margin: '0' }}>
+            {side === injured ? 'Yaralı taraf' : 'Sağlam taraf'} ölçülüyor (yaralı: {SIDE_LABEL[injured as Side].toLocaleLowerCase('tr')}, sağlam:{' '}
+            {SIDE_LABEL[healthy].toLocaleLowerCase('tr')}). İki tarafı da aynı pozisyon ve telefon yerleşimiyle ölç.
+          </p>
+        </div>
+      )}
 
       <section class={`card stack region-${region}`}>
         <h2 class="row" style={{ gap: '0', fontSize: 'var(--fs-headline)' }}>
@@ -437,6 +461,40 @@ export function Rom() {
             >
               Geri al
             </button>
+          </div>
+        )}
+        {askHealthy && healthy && (
+          <div class="card accent stack" style={{ marginTop: 'var(--s-3)' }} role="status">
+            <div class="row" style={{ gap: 'var(--s-3)' }}>
+              <div class="status-icon accent">
+                <IconColumns aria-hidden="true" />
+              </div>
+              <div class="grow">
+                <div class="headline">Sağlam tarafı da ölçmek ister misin?</div>
+                <div class="small muted">
+                  {(() => {
+                    const ref = healthyReference(history, movement, healthy, todayISO());
+                    return ref ? `Son sağlam taraf ölçümü ${formatLongTR(ref.lastDate)}; 30 günden eski.` : 'Bu hareket için sağlam taraf verisi yok.';
+                  })()}{' '}
+                  Simetri hesabı için gerekli.
+                </div>
+              </div>
+            </div>
+            <div class="bottom-actions two">
+              <button class="btn compact-text" onClick={() => setAskHealthy(false)}>
+                Şimdi değil
+              </button>
+              <button
+                class="btn primary compact-text"
+                onClick={() => {
+                  setSide(healthy);
+                  setAskHealthy(false);
+                  setSaved(null);
+                }}
+              >
+                Sağlam tarafı ölç
+              </button>
+            </div>
           </div>
         )}
       </section>

@@ -1,8 +1,9 @@
 import Dexie, { type Table } from 'dexie';
 import type { Exercise, Media, MetaRecord, RomMeasurement, Session, Settings } from './types';
+import { withSettingsDefaults } from './settingsDefaults';
 
 /** Data schema version used both for Dexie and for backup files. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const SETTINGS_ID = 'settings';
 
 export class RehabDB extends Dexie {
@@ -23,7 +24,24 @@ export class RehabDB extends Dexie {
       settings: 'id',
       meta: 'key',
     });
-    // Future: this.version(2).stores({...}).upgrade(tx => ...)
+    // v2: symmetry settings (no index changes). Fill new fields on the existing record.
+    this.version(2)
+      .stores({
+        exercises: 'id, region, order, active, updatedAt',
+        sessions: 'id, date, startedAt, endedAt, updatedAt',
+        rom: 'id, date, region, movement, updatedAt',
+        media: 'id, date, region, kind, updatedAt',
+        settings: 'id',
+        meta: 'key',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('settings')
+          .toCollection()
+          .modify((s: Settings) => {
+            Object.assign(s, withSettingsDefaults(s), { schemaVersion: 2 });
+          }),
+      );
   }
 }
 

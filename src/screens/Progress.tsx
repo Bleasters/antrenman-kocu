@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { Chart } from '../components/Chart';
 import { evaluateAll, useExercises, useSessions, useSettings } from '../hooks';
 import { formatLongTR, formatShortTR, todayISO } from '../logic/dates';
-import { REGION_LABEL } from '../logic/labels';
+import { REGION_LABEL, SIDE_LABEL } from '../logic/labels';
 import { LEVEL_TITLE } from '../logic/painRules';
 import {
   exercisesWithLoad,
@@ -22,6 +22,8 @@ import { REGIONS, type RomMovement } from '../db/types';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
 import { MOVEMENT_LIST, MOVEMENTS } from '../logic/rom';
+import { movementSymmetry, symmetrySummary } from '../logic/symmetry';
+import { SymmetryCard } from '../components/SymmetryCard';
 import { EmptyState } from '../components/EmptyState';
 import { IconActivity, IconCalendar, IconChevronRight, IconGauge, IconReport, IconRuler } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
@@ -68,6 +70,13 @@ export function Progress() {
   const romRegion = movement ? MOVEMENTS[movement].region : null;
   const operated = romRegion ? settings.defaultSides[romRegion] : 'right';
   const romColor = romRegion ? `--${romRegion}` : '--accent';
+
+  // symmetry: injured side vs healthy reference (regions with an injured side only)
+  const symRegions = symmetrySummary(rom, settings, today, romTiming).filter((rs) => region === 'all' || rs.region === region);
+  const injuredSide = romRegion ? settings.injuredSides[romRegion] : 'none';
+  const movSym = movement && injuredSide !== 'none' ? movementSymmetry(rom, movement, injuredSide, today, romTiming) : null;
+  const ref = movSym?.healthyNow ?? null;
+  const symTarget = romRegion ? settings.symmetryTargets[romRegion] : 90;
   const loadRegion = loadExercises.find((e) => e.exerciseId === exId)?.region;
 
   return (
@@ -126,6 +135,15 @@ export function Progress() {
         />
       </section>
 
+      {symRegions.length > 0 && (
+        <>
+          <h2 class="section-title">Simetri · yaralı / sağlam taraf</h2>
+          {symRegions.map((rs) => (
+            <SymmetryCard key={rs.region} rs={rs} dominantHand={settings.dominantHand} />
+          ))}
+        </>
+      )}
+
       <section class="card">
         <div class="row spread">
           <div class="card-title">
@@ -165,7 +183,27 @@ export function Progress() {
                 </option>
               ))}
             </select>
-            {romS && (
+            {romS && movSym && injuredSide !== 'none' && (
+              <>
+                <Chart
+                  ariaLabel="ROM açı trendi: yaralı taraf, sağlam taraf referansı ve hedef simetri"
+                  labels={romS.dates.map(formatShortTR)}
+                  series={[
+                    { label: `${SIDE_LABEL[injuredSide]} (yaralı)`, colorVar: romColor, fill: true },
+                    { label: 'Sağlam ref.', colorVar: '--chart-muted', dashed: true, noPoints: true },
+                    ...(movSym.mode === 'ratio' ? [{ label: `Hedef %${symTarget}`, colorVar: '--text-3', width: 1, noPoints: true }] : []),
+                  ]}
+                  values={[
+                    injuredSide === 'left' ? romS.left : romS.right,
+                    romS.dates.map(() => ref?.value ?? null),
+                    ...(movSym.mode === 'ratio' ? [romS.dates.map(() => (ref ? Math.round(ref.value * symTarget) / 100 : null))] : []),
+                  ]}
+                  format={(v) => `${v}°`}
+                />
+                {!ref && <p class="chart-hint">Sağlam taraf verisi yok; referans çizgisi için sağlam tarafı ölç.</p>}
+              </>
+            )}
+            {romS && !(movSym && injuredSide !== 'none') && (
               <Chart
                 ariaLabel="ROM açı trendi"
                 labels={romS.dates.map(formatShortTR)}

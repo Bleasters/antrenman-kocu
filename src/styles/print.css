@@ -23,6 +23,10 @@
   border-collapse: collapse;
   font-size: 12px;
 }
+.report .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .report th,
 .report td {
   border: 1px solid #bbb;
@@ -109,6 +113,9 @@
   }
   .report h2 {
     break-after: avoid;
+  }
+  .report .table-wrap {
+    overflow: visible;
   }
   .report tr,
   .report .xrays > figure {

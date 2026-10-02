@@ -30,8 +30,11 @@ const ctx = await browser.newContext({
   reducedMotion: 'reduce',
 });
 const page = await ctx.newPage();
+const overflow = [];
 const shot = async (name, full = false) => {
   await page.waitForTimeout(250);
+  const w = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (w > 390) overflow.push(`${name}: page is ${w}px wide`);
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full });
 };
 const go = async (hash) => {
@@ -90,6 +93,13 @@ try {
       rom.push({ id: `fx-r${i}a`, createdAt: t, updatedAt: t, date: iso(t), region: 'ankle', side: 'right', movement: 'ankle_dorsiflexion', angleDeg: 8 + i * 3.5, method: 'sensor', timing: 'pre', trials: [8 + i * 3.5 - 1, 8 + i * 3.5, 8 + i * 3.5 + 1.5] });
       rom.push({ id: `fx-r${i}b`, createdAt: t + 1, updatedAt: t + 1, date: iso(t), region: 'ankle', side: 'right', movement: 'ankle_dorsiflexion', angleDeg: 11 + i * 3.8, method: 'sensor', timing: 'post' });
       rom.push({ id: `fx-r${i}c`, createdAt: t + 2, updatedAt: t + 2, date: iso(t), region: 'wrist', side: 'left', movement: 'wrist_flexion', angleDeg: 35 + i * 6, method: 'manual', timing: 'pre', notes: i === 4 ? 'Fizyoterapist ölçümü' : undefined });
+      // injured wrist extension + healthy-side references (symmetry)
+      rom.push({ id: `fx-r${i}d`, createdAt: t + 3, updatedAt: t + 3, date: iso(t), region: 'wrist', side: 'left', movement: 'wrist_extension', angleDeg: 30 + i * 6, method: 'sensor', timing: 'pre' });
+      if (i % 2 === 0) {
+        rom.push({ id: `fx-r${i}e`, createdAt: t + 4, updatedAt: t + 4, date: iso(t), region: 'wrist', side: 'right', movement: 'wrist_extension', angleDeg: 66, method: 'sensor', timing: 'pre' });
+        rom.push({ id: `fx-r${i}f`, createdAt: t + 5, updatedAt: t + 5, date: iso(t), region: 'wrist', side: 'right', movement: 'wrist_flexion', angleDeg: 72, method: 'manual', timing: 'pre' });
+      }
+      if (i < 2) rom.push({ id: `fx-r${i}g`, createdAt: t + 6, updatedAt: t + 6, date: iso(t), region: 'ankle', side: 'left', movement: 'ankle_dorsiflexion', angleDeg: 28, method: 'sensor', timing: 'pre' });
     });
     const xray = async (seed) => {
       const c = document.createElement('canvas'); c.width = 600; c.height = 800;
@@ -120,6 +130,8 @@ try {
   await page.waitForTimeout(500);
   await shot('02-today');
   await shot('02b-today-full', true);
+  await page.evaluate(() => document.querySelector('.sym-summary')?.scrollIntoView({ block: 'center' }));
+  await shot('02c-today-symmetry');
   await go('/morning-pain');
   await shot('03-morning-pain');
   await go('/progress');
@@ -145,6 +157,32 @@ try {
   await shot('11-backup', true);
   await go('/settings/shortcuts');
   await shot('12-shortcuts', true);
+  // symmetry views
+  await go('/progress');
+  await page.getByText(/Simetri ·/).first().scrollIntoViewIfNeeded().catch(() => {});
+  await page.evaluate(() => document.querySelector('.section-title + .card')?.scrollIntoView({ block: 'start' }));
+  await page.evaluate(() => window.scrollBy(0, -60));
+  await shot('21-progress-symmetry');
+  await page.evaluate(() => [...document.querySelectorAll('h2')].find((h) => h.textContent?.includes('Hareket açıklığı'))?.scrollIntoView({ block: 'start' }));
+  await page.locator('select[aria-label="Hareket"]').selectOption('wrist_extension').catch(() => {});
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.scrollBy(0, -16));
+  await shot('22-progress-rom-reference');
+  await go('/settings');
+  await page.evaluate(() => [...document.querySelectorAll('h2')].find((h) => h.textContent?.includes('Taraflar ve simetri'))?.scrollIntoView({ block: 'start' }));
+  await shot('23-settings-symmetry');
+  await go('/report');
+  await page.evaluate(() => [...document.querySelectorAll('h2')].find((h) => h.textContent?.includes('Simetri ('))?.scrollIntoView({ block: 'start' }));
+  await shot('24-report-symmetry');
+  await go('/rom');
+  await page.getByRole('button', { name: 'Bilek', exact: true }).click();
+  await page.getByRole('button', { name: 'ulnar deviasyon' }).click();
+  await page.getByRole('button', { name: 'Manuel' }).click();
+  await page.getByLabel('Açı (°)').fill('18');
+  await page.getByRole('button', { name: 'Kaydet' }).click();
+  await page.getByText('Sağlam tarafı da ölçmek ister misin?').waitFor();
+  await page.evaluate(() => window.scrollBy(0, 520));
+  await shot('25-rom-healthy-prompt');
 
   // session flow (last: it adds a session)
   await go('/session');
@@ -175,6 +213,10 @@ try {
   await page.getByRole('heading', { name: 'Seans kaydedildi' }).waitFor();
   await shot('20-session-result');
   console.log(`screens → ${OUT} (${SCHEME})`);
+  if (overflow.length) {
+    console.error('Horizontal overflow at 390px:\n' + overflow.join('\n'));
+    process.exitCode = 1;
+  }
 } finally {
   await browser.close();
   server.kill();

@@ -25,6 +25,8 @@ import {
   IconTrendUp,
 } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
+import { SymmetrySummaryCard } from '../components/SymmetryCard';
+import { symmetrySummary } from '../logic/symmetry';
 
 const TREND = {
   up: { Icon: IconTrendUp, text: 'artıyor', cls: 'trend-up' },
@@ -73,6 +75,7 @@ export function Today() {
   const lastEval = evals[evals.length - 1];
   const week = weeklySummary(sessions, today);
   const trend = week.trend ? TREND[week.trend] : null;
+  const symmetry = rom ? symmetrySummary(rom, settings, today).filter((r) => r.movements.length > 0) : [];
 
   return (
     <div class="stack">
@@ -134,6 +137,8 @@ export function Today() {
       ) : (
         <EmptyState icon={IconActivity} title="Henüz seans yok" text="İlk seansından sonra ağrı izleme sonucu burada görünecek." />
       )}
+
+      {symmetry.length > 0 && <SymmetrySummaryCard regions={symmetry} />}
 
       <section class="card">
         <div class="card-title" style={{ marginBottom: 'var(--s-3)' }}>

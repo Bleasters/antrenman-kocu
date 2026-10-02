@@ -2,6 +2,7 @@ import type { RehabDB } from './db';
 import { SCHEMA_VERSION, SETTINGS_ID } from './db';
 import { newId } from './ids';
 import type { Exercise, Settings } from './types';
+import { DEFAULT_SYMMETRY_FIELDS } from './settingsDefaults';
 
 export function defaultSettings(now: number): Settings {
   return {
@@ -15,6 +16,7 @@ export function defaultSettings(now: number): Settings {
     schemaVersion: SCHEMA_VERSION,
     // Talus fracture: right ankle. Scaphoid: left wrist. Knee: left (not operated).
     defaultSides: { wrist: 'left', ankle: 'right', knee: 'left' },
+    ...structuredClone(DEFAULT_SYMMETRY_FIELDS),
   };
 }
 

@@ -125,7 +125,14 @@ export interface Settings extends BaseRecord {
   backupReminderDays: number;
   schemaVersion: number;
   defaultSides: Record<Region, Side>;
+  /** Injured/operated side per region; 'none' = no symmetry tracking for that region. */
+  injuredSides: Record<Region, InjuredSide>;
+  /** Target symmetry index (%) per region. */
+  symmetryTargets: Record<Region, number>;
+  dominantHand: Side;
 }
+
+export type InjuredSide = Side | 'none';
 
 /** Key-value store for app-internal state (active session pointer, pre-replace snapshot). Not exported. */
 export interface MetaRecord {

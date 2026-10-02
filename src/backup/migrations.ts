@@ -1,4 +1,6 @@
 import { SCHEMA_VERSION } from '../db/db';
+import { withSettingsDefaults } from '../db/settingsDefaults';
+import type { Settings } from '../db/types';
 
 /** A migration upgrades a raw backup payload from version N to N+1. */
 export type Migration = (raw: Record<string, unknown>) => Record<string, unknown>;
@@ -7,7 +9,14 @@ export type Migration = (raw: Record<string, unknown>) => Record<string, unknown
  * Keyed by the version they migrate FROM. Add an entry here whenever SCHEMA_VERSION is bumped,
  * e.g. `1: (raw) => ({ ...raw, schemaVersion: 2, data: { ...data, newTable: [] } })`.
  */
-export const MIGRATIONS: Record<number, Migration> = {};
+export const MIGRATIONS: Record<number, Migration> = {
+  // 1 → 2: settings gained symmetry fields (injured side, target %, dominant hand).
+  1: (raw) => {
+    const data = (raw.data ?? {}) as Record<string, unknown>;
+    const settings = data.settings as Partial<Settings> | null | undefined;
+    return { ...raw, data: { ...data, settings: settings ? { ...withSettingsDefaults(settings), schemaVersion: 2 } : settings ?? null } };
+  },
+};
 
 export class BackupVersionError extends Error {}
 

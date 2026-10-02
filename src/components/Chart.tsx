@@ -11,6 +11,10 @@ export interface SeriesDef {
   dashed?: boolean;
   /** soft area fill under the line */
   fill?: boolean;
+  /** stroke width override (thin reference lines) */
+  width?: number;
+  /** hide point markers (reference lines) */
+  noPoints?: boolean;
 }
 
 interface Props {
@@ -92,12 +96,12 @@ export function Chart({ labels, series, values, yRange, height = 220, format = (
             : {
                 label: s.label,
                 stroke: () => color,
-                width: s.dashed ? 1.75 : 2.5,
+                width: s.width ?? (s.dashed ? 1.75 : 2.5),
                 spanGaps: true,
                 dash: s.dashed ? [5, 5] : undefined,
                 fill: s.fill ? `${color}22` : undefined,
                 paths: uPlot.paths.spline!(),
-                points: { show: n <= 16, size: s.dashed ? 0 : 6, width: 0, fill: color, stroke: color },
+                points: { show: n <= 16 && !s.noPoints, size: s.dashed ? 0 : 6, width: 0, fill: color, stroke: color },
               };
         }),
       ],
