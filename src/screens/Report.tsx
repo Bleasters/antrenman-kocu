@@ -6,7 +6,7 @@ import { db } from '../db/db';
 import { useLive } from '../db/live';
 import { useSessions, useSettings } from '../hooks';
 import { addDays, formatLongTR, formatShortTR, todayISO } from '../logic/dates';
-import { RED_FLAG_LABEL, REGION_LABEL, SIDE_LABEL } from '../logic/labels';
+import { RED_FLAG_LABEL, REGION_LABEL, SIDE_LABEL, TIMING_SHORT } from '../logic/labels';
 import { LEVEL_TITLE } from '../logic/painRules';
 import { buildReport } from '../logic/report';
 import { MOVEMENTS } from '../logic/rom';
@@ -48,16 +48,16 @@ export function Report() {
         </div>
         {xrays.length > 0 && (
           <details class="card">
-            <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', fontWeight: 600 }}>Rapora röntgen ekle ({chosen.length} seçili)</summary>
+            <summary style={{ minHeight: '44px', display: 'flex', alignItems: 'center', fontWeight: 600 }}>Rapora röntgen ekle ({chosen.length} seçili)</summary>
             {xrays.map((x) => (
-              <label key={x.id} class="check-row" style={{ marginTop: 8 }}>
+              <label key={x.id} class="check-row" style={{ marginTop: '8px' }}>
                 <input
                   type="checkbox"
                   checked={chosen.includes(x.id)}
                   style={{ accentColor: 'var(--accent)' }}
                   onChange={() => setChosen(chosen.includes(x.id) ? chosen.filter((c) => c !== x.id) : [...chosen, x.id])}
                 />
-                <BlobImage blob={x.thumbBlob ?? x.blob} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
+                <BlobImage blob={x.thumbBlob ?? x.blob} alt="" style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '6px' }} />
                 <span>
                   {formatLongTR(x.date)}
                   {x.region ? ` · ${REGION_LABEL[x.region]}` : ''}
@@ -70,7 +70,7 @@ export function Report() {
         <button class="btn primary big block" onClick={() => window.print()}>
           Yazdır / PDF olarak kaydet
         </button>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           iPhone'da: Yazdır ekranında önizlemeyi iki parmakla büyüt ya da Paylaş → <em>Dosyalar'a Kaydet</em> ile PDF olarak sakla.
         </p>
       </div>
@@ -140,7 +140,7 @@ export function Report() {
                 ))}
               </tbody>
             </table>
-            <div class="legend" style={{ marginTop: 6 }}>
+            <div class="legend" style={{ marginTop: '6px' }}>
               <span>
                 <i style={{ background: C.before }} />
                 Önce
@@ -178,6 +178,7 @@ export function Report() {
                 <tr>
                   <th>Hareket</th>
                   <th>Taraf</th>
+                  <th>Zaman</th>
                   <th>İlk</th>
                   <th>Son</th>
                   <th>Fark</th>
@@ -186,9 +187,10 @@ export function Report() {
               </thead>
               <tbody>
                 {r.rom.map((m) => (
-                  <tr key={`${m.movement}-${m.side}`}>
+                  <tr key={`${m.movement}-${m.side}-${m.timing ?? ''}`}>
                     <td>{MOVEMENTS[m.movement].label}</td>
                     <td>{SIDE_LABEL[m.side]}</td>
+                    <td>{m.timing ? TIMING_SHORT[m.timing] : '–'}</td>
                     <td class="num">
                       {m.first.angle}° <span style={{ color: '#666' }}>({formatShortTR(m.first.date)})</span>
                     </td>
@@ -206,19 +208,22 @@ export function Report() {
                 ))}
               </tbody>
             </table>
-            <div class="charts" style={{ marginTop: 6 }}>
+            <div class="charts" style={{ marginTop: '6px' }}>
               {r.rom
                 .filter((m) => m.n > 1)
                 .map((m) => (
-                  <figure key={`${m.movement}-${m.side}`}>
+                  <figure key={`${m.movement}-${m.side}-${m.timing ?? ''}`}>
                     <figcaption>
-                      {MOVEMENTS[m.movement].label} ({SIDE_LABEL[m.side]})
+                      {MOVEMENTS[m.movement].label} ({SIDE_LABEL[m.side]}
+                      {m.timing ? `, ${TIMING_SHORT[m.timing].toLocaleLowerCase('tr')}` : ''})
                     </figcaption>
                     <MiniChart labels={m.points.map((x) => formatShortTR(x.date))} unit="°" series={[{ label: 'Açı', color: m.side === 'left' ? C.left : C.right, values: m.points.map((x) => x.angle) }]} />
                   </figure>
                 ))}
             </div>
-            <p class="disclaimer">Telefon eğim ölçeriyle ölçülen değerlerin doğruluğu yaklaşık ±5°'dir.</p>
+            <p class="disclaimer">
+              Telefon eğim ölçeriyle ölçülen değerlerin doğruluğu yaklaşık ±5°'dir. Öncesi/Sonrası: antrenman öncesi ya da sonrası yapılan ölçüm.
+            </p>
           </>
         )}
 

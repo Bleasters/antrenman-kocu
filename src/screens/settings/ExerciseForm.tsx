@@ -6,6 +6,7 @@ import { deleteExercise, getSettings, saveExercise, type ExerciseInput } from '.
 import { REGIONS, type ExerciseKind, type Region, type Side } from '../../db/types';
 import { KIND_LABEL, REGION_LABEL } from '../../logic/labels';
 import { navigate } from '../../router';
+import { returnToSession, sessionPick } from '../../state';
 
 const EMPTY: ExerciseInput = {
   name: '',
@@ -60,14 +61,18 @@ export function ExerciseForm({ id }: { id: string }) {
       durationSec: form.kind === 'timed' ? form.durationSec : undefined,
       isSample: false,
     };
-    await saveExercise(clean, isNew ? undefined : id);
-    navigate('/settings/program');
+    const savedId = await saveExercise(clean, isNew ? undefined : id);
+    if (returnToSession.value) {
+      // a new exercise added from the session screen is ticked for this session if it is inactive
+      if (!clean.active) sessionPick.value = { ...sessionPick.value, included: [...sessionPick.value.included, savedId] };
+      navigate('/session');
+    } else navigate('/settings/program');
   };
 
   return (
     <div class="stack">
-      <a class="btn ghost" href="#/settings/program">
-        ‹ Program
+      <a class="btn ghost" href={returnToSession.value ? '#/session' : '#/settings/program'}>
+        {returnToSession.value ? '‹ Seansa dön' : '‹ Program'}
       </a>
       <h1>{isNew ? 'Yeni egzersiz' : 'Egzersizi düzenle'}</h1>
       {isSample && <p class="tag sample">Örnek egzersiz — kendi programına göre düzenle</p>}
@@ -169,7 +174,7 @@ export function ExerciseForm({ id }: { id: string }) {
                 class="btn danger block big"
                 onClick={async () => {
                   await deleteExercise(id);
-                  navigate('/settings/program');
+                  navigate(returnToSession.value ? '/session' : '/settings/program');
                 }}
               >
                 Sil

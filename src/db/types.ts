@@ -89,6 +89,9 @@ export type RomMovement =
   | 'knee_flexion'
   | 'knee_extension';
 
+/** When the ROM was measured relative to the training session. */
+export type RomTiming = 'pre' | 'post';
+
 export interface RomMeasurement extends BaseRecord {
   date: string;
   region: Region;
@@ -96,6 +99,8 @@ export interface RomMeasurement extends BaseRecord {
   movement: RomMovement;
   angleDeg: number;
   method: 'sensor' | 'manual';
+  /** Undefined for measurements taken before this field existed. */
+  timing?: RomTiming;
   /** Individual sensor trials the stored (median) angle came from. */
   trials?: number[];
   notes?: string;

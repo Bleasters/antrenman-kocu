@@ -1,10 +1,13 @@
-import type { ExerciseKind, RedFlag, Region, Side } from '../db/types';
+import type { ExerciseKind, RedFlag, Region, RomTiming, Side } from '../db/types';
 
 export const REGION_LABEL: Record<Region, string> = {
   wrist: 'Bilek',
   ankle: 'Ayak bileği',
   knee: 'Diz',
 };
+
+export const TIMING_LABEL: Record<RomTiming, string> = { pre: 'Antrenman öncesi', post: 'Antrenman sonrası' };
+export const TIMING_SHORT: Record<RomTiming, string> = { pre: 'Öncesi', post: 'Sonrası' };
 
 export const SIDE_LABEL: Record<Side, string> = { left: 'Sol', right: 'Sağ' };
 

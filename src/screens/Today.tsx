@@ -89,7 +89,7 @@ export function Today() {
         <section class="card">
           <div class="row spread">
             <div>
-              <h2 style={{ margin: 0 }}>ROM ölçümü zamanı</h2>
+              <h2 style={{ margin: '0px' }}>ROM ölçümü zamanı</h2>
               <div class="small muted">Son 7 günde hareket açıklığı ölçmedin.</div>
             </div>
             <a class="btn" href="#/rom">

@@ -3,6 +3,7 @@ import { REGIONS } from '../../db/types';
 import { useExercises } from '../../hooks';
 import { KIND_LABEL, REGION_LABEL, SIDE_LABEL } from '../../logic/labels';
 import type { Exercise } from '../../db/types';
+import { returnToSession } from '../../state';
 
 export function dose(e: Pick<Exercise, 'kind' | 'defaultSets' | 'defaultReps' | 'holdSec' | 'durationSec' | 'loadKg'>): string {
   const per = e.kind === 'reps' ? `${e.defaultReps ?? 0}` : e.kind === 'hold' ? `${e.holdSec ?? 0} sn` : `${e.durationSec ?? 0} sn`;
@@ -15,8 +16,8 @@ export function ProgramList() {
   const list = sortExercises(all);
   return (
     <div class="stack">
-      <a class="btn ghost" href="#/settings">
-        ‹ Ayarlar
+      <a class="btn ghost" href={returnToSession.value ? '#/session' : '#/settings'}>
+        {returnToSession.value ? '‹ Seansa dön' : '‹ Ayarlar'}
       </a>
       <h1>Program</h1>
       {REGIONS.map((r) => {
@@ -30,11 +31,11 @@ export function ProgramList() {
               <ul class="list card">
                 {items.map((e, i) => (
                   <li key={e.id} style={{ opacity: e.active ? 1 : 0.55 }}>
-                    <a href={`#/settings/program/${e.id}`} class="grow" style={{ color: 'inherit', textDecoration: 'none', minHeight: 48 }}>
+                    <a href={`#/settings/program/${e.id}`} class="grow" style={{ color: 'inherit', textDecoration: 'none', minHeight: '48px' }}>
                       <div>
                         <strong>{e.name}</strong>
                       </div>
-                      <div class="row wrap small muted" style={{ gap: 6, marginTop: 2 }}>
+                      <div class="row wrap small muted" style={{ gap: '6px', marginTop: '2px' }}>
                         <span>{dose(e)}</span>
                         <span>· {KIND_LABEL[e.kind]}</span>
                         {e.side && <span>· {SIDE_LABEL[e.side]}</span>}
@@ -46,10 +47,10 @@ export function ProgramList() {
                       type="checkbox"
                       aria-label={`${e.name} aktif`}
                       checked={e.active}
-                      style={{ width: 28, height: 28, accentColor: 'var(--accent)' }}
+                      style={{ width: '28px', height: '28px', accentColor: 'var(--accent)' }}
                       onChange={(ev) => void setExerciseActive(e.id, (ev.target as HTMLInputElement).checked)}
                     />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <button class="icon-btn" aria-label={`${e.name} yukarı taşı`} disabled={i === 0} onClick={() => void moveExercise(e.id, -1)}>
                         ↑
                       </button>

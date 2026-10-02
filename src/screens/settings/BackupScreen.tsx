@@ -87,7 +87,7 @@ export function BackupScreen() {
 
       <section class="card orange small">
         <strong>Neden önemli?</strong>
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+        <ul style={{ margin: '6px 0 0', paddingLeft: '18px' }}>
           <li>Veriler sadece bu telefonda durur. Uygulama silinirse, Safari verileri temizlenirse ya da telefon değişirse kalıcı olarak gider.</li>
           <li>iCloud yedeği bu verileri güvenilir şekilde kapsamaz.</li>
           <li>Düzenli olarak dışa aktar ve dosyayı Dosyalar / iCloud Drive’a kaydet.</li>
@@ -113,7 +113,7 @@ export function BackupScreen() {
         >
           Sadece veriler (JSON)
         </button>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           Seanslar, ölçümler, program ve ayarlar. Küçük bir dosya.
         </p>
         <button
@@ -135,7 +135,7 @@ export function BackupScreen() {
         >
           Medya dahil tam yedek (ZIP)
         </button>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           Röntgen ve fotoğraflar da dahil. Büyük olabilir; ayda bir ya da yeni görsel ekledikten sonra al.
         </p>
       </section>
@@ -178,7 +178,7 @@ export function BackupScreen() {
             <button class="btn primary big block" disabled={busy} onClick={() => void doImport('merge')}>
               Birleştir
             </button>
-            <p class="small muted" style={{ margin: 0 }}>
+            <p class="small muted" style={{ margin: '0px' }}>
               Aynı kayıt iki tarafta varsa daha yeni olan kalır. Hiçbir şey silinmez.
             </p>
             <button class="btn danger block" disabled={busy} onClick={() => setConfirmReplace(true)}>
@@ -195,7 +195,7 @@ export function BackupScreen() {
       {snapshot && (
         <section class="card stack">
           <h2>Otomatik yedek</h2>
-          <p class="small muted" style={{ margin: 0 }}>
+          <p class="small muted" style={{ margin: '0px' }}>
             Son "Değiştir" işleminden önceki veriler ({new Date(snapshot.file.exportedAt).toLocaleString('tr-TR')}): {snapshot.file.data.sessions.length} seans
             {snapshot.media ? `, ${snapshot.media.length} görsel` : ''}.
           </p>

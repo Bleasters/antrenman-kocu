@@ -7,7 +7,7 @@ export function RuleCard({ ev, compact = false }: { ev: SessionEvaluation; compa
   return (
     <section class={`card ${cls}`} aria-live="polite">
       <div class="small muted">Son seans · {formatLongTR(ev.date)}</div>
-      <h2 style={{ marginTop: 4 }}>
+      <h2 style={{ marginTop: '4px' }}>
         <span class={`level-dot ${ev.level}`} aria-hidden="true" />
         {LEVEL_TITLE[ev.level]}
       </h2>
@@ -16,13 +16,13 @@ export function RuleCard({ ev, compact = false }: { ev: SessionEvaluation; compa
         ev.regions.map((r) => {
           const lines = [...r.reasons.map(reasonText), ...(r.streak ? [STREAK_TEXT[r.streak]] : [])];
           return (
-            <div key={r.region} style={{ marginTop: 8 }}>
+            <div key={r.region} style={{ marginTop: '8px' }}>
               <strong>
                 <span class={`level-dot ${r.provisional ? 'grey' : r.level}`} aria-hidden="true" />
                 {REGION_LABEL[r.region]}
               </strong>
               {lines.length > 0 ? (
-                <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '20px' }}>
                   {lines.map((l) => (
                     <li key={l}>{l}</li>
                   ))}
@@ -33,7 +33,7 @@ export function RuleCard({ ev, compact = false }: { ev: SessionEvaluation; compa
             </div>
           );
         })}
-      <p class="small muted" style={{ marginTop: 10, marginBottom: 0 }}>
+      <p class="small muted" style={{ marginTop: '10px', marginBottom: '0px' }}>
         Bu bir tıbbi tavsiye değildir; eşikler fizyoterapistinle belirlediğin değerlerdir.
       </p>
     </section>

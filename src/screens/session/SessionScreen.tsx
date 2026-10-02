@@ -22,7 +22,10 @@ import type { SessionEvaluation } from '../../logic/painRules';
 import { unlockAudio } from '../../platform/feedback';
 import { allowScreenOff, keepScreenOn } from '../../platform/wakeLock';
 import { navigate } from '../../router';
-import { prefs, sessionActive } from '../../state';
+import { prefs, returnToSession, sessionActive, sessionPick, sessionRegions } from '../../state';
+import { pickedExercises, togglePick } from '../../logic/sessionPick';
+import { IconNote } from '../../components/Icons';
+import { dose } from '../settings/ProgramList';
 import { ExerciseStep } from './ExerciseStep';
 import { goToExercise } from './flow';
 
@@ -32,22 +35,31 @@ function gestureFeatures() {
   void keepScreenOn();
 }
 
-function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: (r: Region[]) => void }) {
-  const active = exercises.filter((e) => e.active);
-  const [sel, setSel] = useState<Region[]>(() =>
-    (prefs.lastRegions as Region[]).filter((r) => REGIONS.includes(r) && active.some((e) => e.region === r)),
+function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: (r: Region[], list: Exercise[]) => void }) {
+  const [sel, setSelState] = useState<Region[]>(() =>
+    ((sessionRegions.value ?? prefs.lastRegions) as Region[]).filter((r) => REGIONS.includes(r) && exercises.some((e) => e.region === r)),
   );
-  const chosen = active.filter((e) => sel.includes(e.region));
+  const setSel = (r: Region[]) => {
+    setSelState(r);
+    sessionRegions.value = r; // survives a trip to the program editor
+  };
+  const pick = sessionPick.value;
+  const chosen = pickedExercises(exercises, sel, pick);
   const toggle = (r: Region) => setSel(sel.includes(r) ? sel.filter((x) => x !== r) : REGIONS.filter((x) => x === r || sel.includes(x)));
+  const openEditor = (path: string) => {
+    returnToSession.value = true;
+    navigate(path);
+  };
   return (
     <div class="session-body">
       <h1>Yeni seans</h1>
       <p class="muted">Bugün hangi bölgeleri çalışacaksın?</p>
       <div class="stack">
         {REGIONS.map((r) => {
-          const n = active.filter((e) => e.region === r).length;
+          const n = exercises.filter((e) => e.region === r && e.active).length;
+          const any = exercises.some((e) => e.region === r);
           return (
-            <button key={r} class={`btn big block${sel.includes(r) ? ' selected' : ''}`} aria-pressed={sel.includes(r)} disabled={n === 0} onClick={() => toggle(r)}>
+            <button key={r} class={`btn big block${sel.includes(r) ? ' selected' : ''}`} aria-pressed={sel.includes(r)} disabled={!any} onClick={() => toggle(r)}>
               <span class="grow" style={{ textAlign: 'left' }}>
                 {REGION_LABEL[r]}
               </span>
@@ -56,26 +68,70 @@ function RegionSelect({ exercises, onStart }: { exercises: Exercise[]; onStart: 
           );
         })}
       </div>
-      {chosen.length > 0 && (
-        <ol class="small muted" style={{ marginTop: 16, paddingLeft: 20 }}>
-          {chosen.map((e) => (
-            <li key={e.id}>{e.name}</li>
-          ))}
-        </ol>
+
+      {sel.length > 0 && (
+        <>
+          <h2 class="section-title">Bu seanstaki hareketler</h2>
+          <p class="small muted" style={{ marginTop: '0px' }}>
+            İşaretini kaldırdığın hareket sadece bu seansta atlanır; programın değişmez.
+          </p>
+          <ul class="list card">
+            {exercises
+              .filter((e) => sel.includes(e.region))
+              .sort((x, y) => REGIONS.indexOf(x.region) - REGIONS.indexOf(y.region) || x.order - y.order)
+              .map((e) => {
+                const on = chosen.some((c) => c.id === e.id);
+                return (
+                  <li key={e.id}>
+                    <label class="row grow" style={{ minHeight: '48px', cursor: 'pointer', minWidth: '0px' }}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        style={{ width: '24px', height: '24px', accentColor: 'var(--accent)', flex: 'none' }}
+                        onChange={() => (sessionPick.value = togglePick(pick, e))}
+                      />
+                      <span style={{ minWidth: '0px', opacity: on ? 1 : 0.6 }}>
+                        <span style={{ display: 'block' }}>{e.name}</span>
+                        <span class="small muted">
+                          {dose(e)}
+                          {sel.length > 1 ? ` · ${REGION_LABEL[e.region]}` : ''}
+                          {!e.active ? ' · programda pasif' : ''}
+                        </span>
+                      </span>
+                    </label>
+                    <button class="icon-btn" aria-label={`${e.name} düzenle`} title="Düzenle" onClick={() => openEditor(`/settings/program/${e.id}`)}>
+                      <IconNote />
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        </>
       )}
-      {active.length === 0 && (
-        <p class="card grey">
-          Aktif egzersiz yok. <a href="#/settings/program">Programı düzenle</a>
+      <div class="bottom-actions two" style={{ paddingTop: '12px' }}>
+        <button class="btn" onClick={() => openEditor('/settings/program')}>
+          Programı düzenle
+        </button>
+        <button class="btn" onClick={() => openEditor('/settings/program/new')}>
+          + Yeni hareket
+        </button>
+      </div>
+      {exercises.length === 0 && <p class="card grey">Programda hareket yok. "Yeni hareket" ile ekle.</p>}
+      <div class="spacer" />
+      {sel.length > 0 && (
+        <p class="center small muted" style={{ margin: '0 0 6px' }}>
+          {chosen.length} hareket seçili
         </p>
       )}
-      <div class="spacer" />
       <button
         class="btn primary huge block"
         disabled={chosen.length === 0}
         onClick={() => {
           gestureFeatures();
           prefs.setLastRegions(sel);
-          onStart(sel);
+          sessionPick.value = { excluded: [], included: [] };
+          sessionRegions.value = null;
+          onStart(sel, chosen);
         }}
       >
         Seansı başlat
@@ -129,7 +185,7 @@ function RedFlagsAndNotes({ session, onChange }: { session: Session; onChange: (
   const toggle = (f: RedFlag) => onChange({ ...session, redFlags: flags.includes(f) ? flags.filter((x) => x !== f) : [...flags, f] });
   return (
     <>
-      <h2 style={{ marginTop: 16 }}>Kırmızı bayraklar</h2>
+      <h2 style={{ marginTop: '16px' }}>Kırmızı bayraklar</h2>
       <p class="small muted">Varsa işaretle. Herhangi biri işaretlenirse sonuç "Dur — doktoruna/fizyoterapistine danış" olur.</p>
       {RED_FLAGS.map((f) => (
         <label key={f} class={`check-row${flags.includes(f) ? ' checked' : ''}`}>
@@ -137,7 +193,7 @@ function RedFlagsAndNotes({ session, onChange }: { session: Session; onChange: (
           <span>{RED_FLAG_LABEL[f]}</span>
         </label>
       ))}
-      <label class="field" style={{ marginTop: 16 }}>
+      <label class="field" style={{ marginTop: '16px' }}>
         <span>Not (isteğe bağlı)</span>
         <textarea value={session.notes ?? ''} onInput={(e) => onChange({ ...session, notes: (e.target as HTMLTextAreaElement).value })} />
       </label>
@@ -156,6 +212,7 @@ export function SessionScreen() {
   const saveChain = useRef(Promise.resolve());
 
   useEffect(() => {
+    returnToSession.value = false;
     void (async () => {
       const [ex, p] = await Promise.all([listExercises(), getActiveProgress()]);
       setExercises(ex);
@@ -196,6 +253,9 @@ export function SessionScreen() {
       <div class="session-body">
         <h1>Seans kaydedildi</h1>
         <RuleCard ev={result} />
+        <a class="btn block big" href="#/rom" style={{ marginTop: '12px' }}>
+          ROM ölç (antrenman sonrası)
+        </a>
         <div class="spacer" />
         <button class="btn primary huge block" onClick={() => navigate('/')}>
           Bugün'e dön
@@ -208,8 +268,7 @@ export function SessionScreen() {
     return (
       <RegionSelect
         exercises={exercises}
-        onStart={async (regions) => {
-          const list = exercises.filter((e) => e.active && regions.includes(e.region));
+        onStart={async (regions, list) => {
           const s = await createSession(regions, list);
           setSession(s);
           setProgress({ sessionId: s.id, step: 'before', exIndex: 0, setIndex: 0, phase: 'work', count: 0 });

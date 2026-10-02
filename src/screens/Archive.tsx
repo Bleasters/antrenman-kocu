@@ -64,7 +64,7 @@ function Viewer({ item, onClose }: { item: Media; onClose: () => void }) {
           Düzenle
         </button>
       </div>
-      <div class="viewer-stage" style={{ marginTop: 8 }}>
+      <div class="viewer-stage" style={{ marginTop: '8px' }}>
         <ZoomView label={item.note ?? KIND_TR[item.kind]}>
           <BlobImage blob={item.blob} alt={item.note ?? KIND_TR[item.kind]} />
         </ZoomView>
@@ -132,7 +132,7 @@ function Compare({ a, b, onClose }: { a: Media; b: Media; onClose: () => void })
       </div>
       {mode === 'side' ? (
         <>
-          <div class="viewer-stage two" style={{ marginTop: 8 }}>
+          <div class="viewer-stage two" style={{ marginTop: '8px' }}>
             {[first, second].map((m) => (
               <ZoomView key={m.id} label={cap(m)}>
                 <BlobImage blob={m.blob} alt={cap(m)} />
@@ -146,12 +146,12 @@ function Compare({ a, b, onClose }: { a: Media; b: Media; onClose: () => void })
         </>
       ) : (
         <>
-          <div class="viewer-stage" style={{ marginTop: 8 }}>
+          <div class="viewer-stage" style={{ marginTop: '8px' }}>
             <ZoomView label="Üst üste karşılaştırma">
               <div class="overlay-pair">
                 <BlobImage blob={first.blob} alt={cap(first)} />
                 <BlobImage blob={second.blob} alt={cap(second)} style={{ clipPath: `inset(0 0 0 ${split}%)` }} />
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${split}%`, width: 2, background: '#fff', boxShadow: '0 0 0 1px rgb(0 0 0 / 0.6)' }} />
+                <div style={{ position: 'absolute', top: '0px', bottom: '0px', left: `${split}%`, width: '2px', background: '#fff', boxShadow: '0 0 0 1px rgb(0 0 0 / 0.6)' }} />
               </div>
             </ZoomView>
           </div>
@@ -212,7 +212,7 @@ export function Archive() {
   return (
     <div class="stack">
       <div class="row spread">
-        <h1 style={{ margin: 0 }}>Arşiv</h1>
+        <h1 style={{ margin: '0px' }}>Arşiv</h1>
         {list.length >= 2 && (
           <button
             class={`btn${compareMode ? ' selected' : ''}`}
@@ -313,7 +313,7 @@ export function Archive() {
             </>
           }
         >
-          <BlobImage blob={pending.thumb} alt="Önizleme" style={{ width: 120, borderRadius: 10, display: 'block', marginBottom: 12 }} />
+          <BlobImage blob={pending.thumb} alt="Önizleme" style={{ width: '120px', borderRadius: '10px', display: 'block', marginBottom: '12px' }} />
           <p class="small muted">Sıkıştırıldı: {formatBytes(pending.blob.size)}</p>
           <MetaFields meta={pending.meta} onChange={(meta) => setPending({ ...pending, meta })} />
         </Modal>

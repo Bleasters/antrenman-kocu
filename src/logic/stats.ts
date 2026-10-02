@@ -1,4 +1,4 @@
-import type { PainMap, Region, RomMeasurement, RomMovement, Session } from '../db/types';
+import type { PainMap, Region, RomMeasurement, RomMovement, RomTiming, Session } from '../db/types';
 import { addDays, daysBetween, startOfWeek } from './dates';
 
 export type RegionFilter = Region | 'all';
@@ -217,10 +217,17 @@ export interface RomSeries {
   right: (number | null)[];
 }
 
+/** 'all' also includes measurements without a timing (taken before timings existed). */
+export type RomTimingFilter = RomTiming | 'all';
+
+export function matchesTiming(r: Pick<RomMeasurement, 'timing'>, timing: RomTimingFilter): boolean {
+  return timing === 'all' || r.timing === timing;
+}
+
 /** One point per date and side (the latest measurement of that day wins). */
-export function romSeries(rom: RomMeasurement[], movement: RomMovement, from?: string): RomSeries {
+export function romSeries(rom: RomMeasurement[], movement: RomMovement, from?: string, timing: RomTimingFilter = 'all'): RomSeries {
   const list = rom
-    .filter((r) => r.movement === movement && (!from || r.date >= from))
+    .filter((r) => r.movement === movement && (!from || r.date >= from) && matchesTiming(r, timing))
     .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
   const dates = [...new Set(list.map((r) => r.date))];
   const pick = (side: 'left' | 'right') =>
@@ -229,6 +236,14 @@ export function romSeries(rom: RomMeasurement[], movement: RomMovement, from?: s
       return day.length ? day[day.length - 1].angleDeg : null;
     });
   return { dates, left: pick('left'), right: pick('right') };
+}
+
+/**
+ * Default timing for a new measurement: "post" if a session finished within the last
+ * `windowMs` (the user is most likely measuring right after training), else "pre".
+ */
+export function defaultRomTiming(sessions: Pick<Session, 'endedAt'>[], now: number, windowMs = 3 * 3_600_000): RomTiming {
+  return sessions.some((s) => s.endedAt != null && s.endedAt <= now && now - s.endedAt <= windowMs) ? 'post' : 'pre';
 }
 
 /** True if no ROM measurement exists in the last 7 days (incl. today). */

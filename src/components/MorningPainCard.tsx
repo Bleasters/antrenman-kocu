@@ -15,8 +15,8 @@ export function MorningPainCard({ session }: { session: Session }) {
         {regions.map((r) => `${REGION_LABEL[r]} ${session.painBefore[r] ?? '–'}`).join(', ')}
       </p>
       {regions.map((r: Region) => (
-        <div key={r} style={{ marginTop: 10 }}>
-          {regions.length > 1 && <strong style={{ display: 'block', marginBottom: 6 }}>{REGION_LABEL[r]}</strong>}
+        <div key={r} style={{ marginTop: '10px' }}>
+          {regions.length > 1 && <strong style={{ display: 'block', marginBottom: '6px' }}>{REGION_LABEL[r]}</strong>}
           <PainPicker
             label={`${REGION_LABEL[r]} sabah ağrısı`}
             value={session.painNextMorning?.[r]}

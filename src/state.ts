@@ -48,3 +48,16 @@ export const prefs = {
     lsSet(LS.lastRegions, JSON.stringify(r));
   },
 };
+
+/**
+ * Per-session exercise picks on the "new session" screen, kept in memory while the user
+ * hops to the program editor and back. `excluded`: active exercises unticked for this
+ * session; `included`: inactive exercises ticked for this session.
+ */
+export const sessionPick = signal<{ excluded: string[]; included: string[] }>({ excluded: [], included: [] });
+
+/** Regions ticked on the new-session screen (null = not chosen yet, fall back to last used). */
+export const sessionRegions = signal<string[] | null>(null);
+
+/** Set when the program editor was opened from the new-session screen. */
+export const returnToSession = signal(false);

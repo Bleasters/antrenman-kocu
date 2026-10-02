@@ -20,7 +20,7 @@ export function PlacementDiagram({ movement }: { movement: RomMovement }) {
   const s = SHAPES[movement];
   const [px, py, rot] = s.phone;
   return (
-    <svg viewBox="0 0 220 150" role="img" aria-label={`${MOVEMENTS[movement].label}: telefonun yerleşimi`} style={{ width: '100%', maxWidth: 320, display: 'block', margin: '0 auto' }}>
+    <svg viewBox="0 0 220 150" role="img" aria-label={`${MOVEMENTS[movement].label}: telefonun yerleşimi`} style={{ width: '100%', maxWidth: '320px', display: 'block', margin: '0 auto' }}>
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" fill="var(--orange)" />

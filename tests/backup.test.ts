@@ -65,7 +65,10 @@ const rom: RomMeasurement = {
   side: 'right',
   movement: 'ankle_dorsiflexion',
   angleDeg: 12.5,
-  method: 'manual',
+  method: 'sensor',
+  timing: 'post',
+  trials: [12, 12.5, 13],
+  notes: 'sabah',
 };
 
 async function populate(d: RehabDB) {
