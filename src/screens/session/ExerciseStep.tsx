@@ -1,5 +1,7 @@
 import { useState } from 'preact/hooks';
+import { IconCheck, IconChevronRight, IconGauge, IconMinus, IconPause, IconPlaySmall, IconReset, IconSkip } from '../../components/Icons';
 import { PainPicker } from '../../components/PainPicker';
+import { ProgressRing } from '../../components/ProgressRing';
 import { Stepper } from '../../components/Stepper';
 import type { SessionProgress } from '../../db/repo';
 import type { Exercise, Session } from '../../db/types';
@@ -19,17 +21,22 @@ function RestView({ restSec, resetKey, onDone }: { restSec: number; resetKey: st
   const cd = useCountdown(restSec, resetKey, true, onDone);
   return (
     <>
-      <div class="phase-label rest">Dinlenme</div>
-      <div class="big-number rest" role="timer" aria-live="off">
-        {formatClock(cd.remainingSec)}
-      </div>
+      <ProgressRing progress={restSec > 0 ? cd.remainingSec / restSec : 0} variant="rest">
+        <div class="phase-label rest">Dinlenme</div>
+        <div class="big-number" role="timer" aria-live="off">
+          {formatClock(cd.remainingSec)}
+        </div>
+        <div class="ring-label">sonraki set</div>
+      </ProgressRing>
       <div class="spacer" />
       <div class="bottom-actions two">
         <button class="btn big" onClick={() => (cd.running ? cd.pause() : cd.start())}>
+          {cd.running ? <IconPause aria-hidden="true" /> : <IconPlaySmall aria-hidden="true" />}
           {cd.running ? 'Duraklat' : 'Sürdür'}
         </button>
         <button class="btn primary big" onClick={onDone}>
-          Atla ›
+          <IconSkip aria-hidden="true" />
+          Atla
         </button>
       </div>
     </>
@@ -38,22 +45,29 @@ function RestView({ restSec, resetKey, onDone }: { restSec: number; resetKey: st
 
 function TimerWork({ target, resetKey, onDone }: { target: number; resetKey: string; onDone: (elapsed: number) => void }) {
   const cd = useCountdown(target, resetKey, false, () => onDone(target));
+  const done = cd.remainingSec === 0;
   return (
     <>
-      <div class="phase-label">{cd.running ? 'Devam' : 'Hazır'}</div>
-      <div class={`big-number${cd.remainingSec === 0 ? ' reached' : ''}`} role="timer" aria-live="off">
-        {formatClock(cd.remainingSec)}
-      </div>
+      <ProgressRing progress={target > 0 ? (target - cd.remainingSec) / target : 0} variant={done ? 'reached' : 'work'}>
+        <div class="phase-label">{cd.running ? 'Devam' : 'Hazır'}</div>
+        <div class={`big-number${done ? ' reached' : ''}`} role="timer" aria-live="off">
+          {formatClock(cd.remainingSec)}
+        </div>
+        <div class="ring-label">{cd.remainingSec >= 60 ? 'kalan süre' : 'saniye kaldı'}</div>
+      </ProgressRing>
       <div class="spacer" />
       <div class="bottom-actions">
         <button class="btn primary huge" onClick={() => (cd.running ? cd.pause() : cd.start())}>
+          {cd.running ? <IconPause aria-hidden="true" /> : <IconPlaySmall aria-hidden="true" fill="currentColor" />}
           {cd.running ? 'Duraklat' : cd.remainingSec < target ? 'Sürdür' : 'Başlat'}
         </button>
         <div class="bottom-actions two">
-          <button class="btn" onClick={cd.reset}>
+          <button class="btn big" onClick={cd.reset}>
+            <IconReset aria-hidden="true" />
             Sıfırla
           </button>
-          <button class="btn" onClick={() => onDone(Math.max(0, cd.elapsedSec))}>
+          <button class="btn tinted big" onClick={() => onDone(Math.max(0, cd.elapsedSec))}>
+            <IconCheck aria-hidden="true" />
             Set bitti
           </button>
         </div>
@@ -76,23 +90,28 @@ function RepsWork({
   const reached = target > 0 && count >= target;
   return (
     <>
-      <div class="phase-label">Tekrar</div>
-      <div class={`big-number${reached ? ' reached' : ''}`} aria-live="polite">
-        {count}
-        <span class="of"> / {target}</span>
-      </div>
+      <ProgressRing progress={target > 0 ? count / target : 0} variant={reached ? 'reached' : 'work'} fast>
+        <div class="phase-label">Tekrar</div>
+        <div class={`big-number${reached ? ' reached' : ''}`} aria-live="polite">
+          {count}
+        </div>
+        <div class="ring-label">
+          <span class="of">/ {target}</span> hedef
+        </div>
+      </ProgressRing>
       <div class="spacer" />
       <div class="bottom-actions">
         <div class="bottom-actions two">
           <button class="btn big" disabled={count === 0} onClick={() => onCount(count - 1)} aria-label="Bir azalt">
-            −1
+            <IconMinus aria-hidden="true" />1
           </button>
-          <button class={`btn big${reached ? ' primary' : ''}`} onClick={onDone}>
+          <button class={`btn big${reached ? ' primary' : ' tinted'}`} onClick={onDone}>
+            <IconCheck aria-hidden="true" />
             Set bitti
           </button>
         </div>
         <button
-          class="btn primary huge"
+          class="btn primary huge rep-button"
           onClick={() => {
             const n = count + 1;
             if (n === target) vibrate(80);
@@ -115,6 +134,7 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
   const isLast = p.exIndex >= session.entries.length - 1;
   const resetKey = `${p.exIndex}-${p.setIndex}-${p.phase}`;
   const target = kind === 'reps' ? set?.reps ?? 0 : kind === 'hold' ? set?.holdSec ?? 0 : set?.durationSec ?? 0;
+  const region = exercise?.region ?? entry.region ?? 'wrist';
 
   const finishSet = (patch: Parameters<typeof markSetDone>[2]) => {
     const s = markSetDone(session, p, patch);
@@ -122,19 +142,24 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
   };
 
   return (
-    <div class="session-body">
-      <div class="small muted">
-        Egzersiz {p.exIndex + 1}/{session.entries.length}
+    <div class={`session-body region-${region}`}>
+      <div class="progress-bar" aria-hidden="true">
+        <span style={{ width: `${((p.exIndex + (p.phase === 'complete' ? 1 : 0)) / session.entries.length) * 100}%` }} />
       </div>
-      <h1 style={{ marginTop: '2px' }}>{exercise?.name ?? entry.name ?? 'Egzersiz'}</h1>
-      <div class="ex-meta">
-        <span class="tag">{REGION_LABEL[exercise?.region ?? entry.region ?? 'wrist']}</span>
-        {exercise?.side && <span class="tag">{SIDE_LABEL[exercise.side]}</span>}
-        <span class="tag">{KIND_LABEL[kind]}</span>
-        {set?.loadKg ? <span class="tag">{set.loadKg} kg</span> : null}
-        {exercise?.bandLevel && <span class="tag">Bant: {exercise.bandLevel}</span>}
+      <div class="ex-header">
+        <div class="overline">
+          Egzersiz {p.exIndex + 1}/{session.entries.length}
+        </div>
+        <h1>{exercise?.name ?? entry.name ?? 'Egzersiz'}</h1>
+        <div class="ex-meta">
+          <span class="region-chip">{REGION_LABEL[region]}</span>
+          {exercise?.side && <span class="tag">{SIDE_LABEL[exercise.side]}</span>}
+          <span class="tag">{KIND_LABEL[kind]}</span>
+          {set?.loadKg ? <span class="tag">{set.loadKg} kg</span> : null}
+          {exercise?.bandLevel && <span class="tag">Bant: {exercise.bandLevel}</span>}
+        </div>
+        {exercise?.instructions && <p class="ex-instructions">{exercise.instructions}</p>}
       </div>
-      {exercise?.instructions && <p class="muted">{exercise.instructions}</p>}
 
       <div class="set-dots" aria-label={`Set ${p.setIndex + 1} / ${entry.sets.length}`}>
         {entry.sets.map((s, i) => (
@@ -165,30 +190,34 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
 
       {p.phase === 'complete' && (
         <>
-          <div class="big-number reached" aria-hidden="true">
-            ✓
-          </div>
+          <ProgressRing progress={1} variant="reached">
+            <IconCheck aria-hidden="true" size={72} strokeWidth={2.5} style={{ color: 'var(--ok)' }} />
+            <div class="ring-label">Egzersiz tamam</div>
+          </ProgressRing>
           <div class="spacer" />
-          <div class="card" style={{ marginBottom: '12px' }}>
-            <strong>Egzersiz sırasında en yüksek ağrı (isteğe bağlı)</strong>
-            <div style={{ marginTop: '8px' }}>
-              <PainPicker
-                label="Egzersiz sırasında en yüksek ağrı"
-                value={entry.painDuring}
-                onChange={(v) => onChange(setPainDuring(session, p.exIndex, entry.painDuring === v ? undefined : v), p)}
-              />
+          <div class="card" style={{ marginBottom: 'var(--s-3)' }}>
+            <div class="headline">Egzersiz sırasında en yüksek ağrı</div>
+            <div class="small faint" style={{ marginBottom: 'var(--s-3)' }}>
+              İsteğe bağlı
             </div>
+            <PainPicker
+              label="Egzersiz sırasında en yüksek ağrı"
+              value={entry.painDuring}
+              onChange={(v) => onChange(setPainDuring(session, p.exIndex, entry.painDuring === v ? undefined : v), p)}
+            />
           </div>
           <button class="btn primary huge block" onClick={() => onChange(session, goToExercise(session, p, p.exIndex + 1))}>
-            {isLast ? 'Seans sonu ›' : 'Sonraki egzersiz ›'}
+            {isLast ? 'Seans sonu' : 'Sonraki egzersiz'}
+            <IconChevronRight aria-hidden="true" />
           </button>
         </>
       )}
 
       {p.phase === 'work' && set && (
-        <div style={{ marginTop: '12px' }}>
-          <button class="btn ghost block" aria-expanded={showAdjust} onClick={() => setShowAdjust(!showAdjust)}>
-            {showAdjust ? 'Ayarları gizle' : 'Bu seti ayarla (yük / hedef) · ağrı gir'}
+        <div style={{ marginTop: 'var(--s-2)' }}>
+          <button class="btn ghost block compact-text" aria-expanded={showAdjust} onClick={() => setShowAdjust(!showAdjust)}>
+            <IconGauge aria-hidden="true" />
+            {showAdjust ? 'Ayarları gizle' : 'Bu seti ayarla · ağrı gir'}
           </button>
           {showAdjust && (
             <div class="card stack">
@@ -202,8 +231,11 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
                 <Stepper label="Süre" unit="sn" step={5} value={set.durationSec ?? 0} min={5} onChange={(v) => onChange(editUpcomingSets(session, p, { durationSec: v }), p)} />
               )}
               <Stepper label="Yük" unit="kg" step={0.5} value={set.loadKg ?? 0} onChange={(v) => onChange(editUpcomingSets(session, p, { loadKg: v || undefined }), p)} />
-              <p class="small muted">Değişiklik bu ve sonraki setlere uygulanır.</p>
-              <strong>Egzersiz sırasında en yüksek ağrı</strong>
+              <p class="small faint" style={{ margin: '0' }}>
+                Değişiklik bu ve sonraki setlere uygulanır.
+              </p>
+              <hr class="divider" />
+              <div class="headline">Egzersiz sırasında en yüksek ağrı</div>
               <PainPicker
                 label="Egzersiz sırasında en yüksek ağrı"
                 value={entry.painDuring}

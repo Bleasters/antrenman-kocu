@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
+import { IconBell, IconInfo, IconList, IconReport, IconRuler, IconShield, IconTrash } from '../../components/Icons';
+import { ListLink } from '../../components/ListLink';
 import { Modal } from '../../components/Modal';
+import { PageHeader } from '../../components/PageHeader';
 import { Stepper } from '../../components/Stepper';
 import { updateSettings, wipeAllData } from '../../db/repo';
 import { db } from '../../db/db';
@@ -17,8 +20,9 @@ function StorageInfo() {
     void storageEstimate().then(setEst);
   }, []);
   return (
+    <>
+    <h2 class="section-title">Depolama</h2>
     <section class="card stack">
-      <h2>Depolama</h2>
       <div class="row spread">
         <span>Kalıcı depolama</span>
         <strong>{persisted === undefined ? '…' : persisted === null ? 'Desteklenmiyor' : persisted ? 'Verildi ✓' : 'Verilmedi'}</strong>
@@ -40,6 +44,7 @@ function StorageInfo() {
         Safari sekmesi ile ana ekran uygulaması ayrı depolama kullanır. Verilerini ana ekran uygulamasında tut.
       </p>
     </section>
+    </>
   );
 }
 
@@ -47,8 +52,11 @@ function DangerZone() {
   const [stage, setStage] = useState<0 | 1 | 2>(0);
   const [typed, setTyped] = useState('');
   return (
-    <section class="card">
-      <h2>Tüm verileri sil</h2>
+    <section class="card" style={{ marginTop: 'var(--s-6)' }}>
+      <h2 class="card-title" style={{ color: 'var(--bad)', marginBottom: 'var(--s-1)' }}>
+        <IconTrash aria-hidden="true" style={{ color: 'var(--bad)' }} />
+        Tüm verileri sil
+      </h2>
       <p class="small muted">Seanslar, ölçümler, program ve ayarlar kalıcı olarak silinir. Önce yedek al.</p>
       <button class="btn danger block" onClick={() => setStage(1)}>
         Tüm verileri sil…
@@ -114,47 +122,42 @@ export function SettingsScreen() {
   const buildDate = new Date(__BUILD_TIME__);
   return (
     <div class="stack">
-      <h1>Ayarlar</h1>
+      <PageHeader title="Ayarlar" />
 
-      <section class="card stack">
-        <h2>Program</h2>
-        <a class="btn block big" href="#/settings/program">
-          Egzersiz programını düzenle ›
-        </a>
+      <h2 class="section-title">Program ve araçlar</h2>
+      <section class="card" style={{ padding: '0 var(--s-4)' }}>
+        <ListLink href="#/settings/program" icon={IconList} title="Egzersiz programını düzenle" />
+        <ListLink href="#/rom" icon={IconRuler} title="ROM ölçümü" />
+        <ListLink href="#/report" icon={IconReport} title="Doktor raporu" />
+        <ListLink href="#/settings/shortcuts" icon={IconBell} title="iOS Kısayol kurulumu" detail="Hatırlatmalar" />
       </section>
 
+      <h2 class="section-title">Ağrı izleme eşikleri</h2>
       <section class="card stack">
-        <h2>Araçlar</h2>
-        <a class="btn block" href="#/rom">
-          ROM ölçümü ›
-        </a>
-        <a class="btn block" href="#/report">
-          Doktor raporu ›
-        </a>
-        <a class="btn block" href="#/settings/shortcuts">
-          iOS Kısayol kurulumu (hatırlatmalar) ›
-        </a>
-      </section>
-
-      <section class="card stack">
-        <h2>Ağrı izleme eşikleri</h2>
-        <p class="small" style={{ margin: '0px' }}>
-          <strong>Eşikleri fizyoterapistinle birlikte belirle.</strong> Bu uygulama tıbbi tavsiye vermez.
-        </p>
+        <div class="row" style={{ gap: 'var(--s-3)', alignItems: 'flex-start' }}>
+          <IconInfo aria-hidden="true" style={{ color: 'var(--accent)', flex: 'none', marginTop: '2px' }} size={20} />
+          <p class="callout muted" style={{ margin: '0' }}>
+            <strong style={{ color: 'var(--text)' }}>Eşikleri fizyoterapistinle birlikte belirle.</strong> Bu uygulama tıbbi tavsiye vermez.
+          </p>
+        </div>
+        <hr class="divider" />
         <Stepper label="Artış eşiği (sonra − önce ≥)" value={s.painIncreaseThreshold} min={1} max={10} onChange={(v) => void updateSettings({ painIncreaseThreshold: v })} />
         <Stepper label="Seans içi/sonrası üst sınır (>)" value={s.painMaxDuring} min={0} max={10} onChange={(v) => void updateSettings({ painMaxDuring: v })} />
         <label class="switch-row">
-          <span>Ertesi sabah ağrı, seans öncesi seviyeye dönmeli</span>
+          <span class="callout">Ertesi sabah ağrı, seans öncesi seviyeye dönmeli</span>
           <input type="checkbox" checked={s.nextMorningMustReturn} onChange={(e) => void updateSettings({ nextMorningMustReturn: (e.target as HTMLInputElement).checked })} />
         </label>
       </section>
 
+      <h2 class="section-title">Varsayılan taraflar</h2>
       <section class="card stack">
-        <h2>Varsayılan taraflar</h2>
         {REGIONS.map((r) => (
-          <div class="row spread" key={r}>
-            <span>{REGION_LABEL[r]}</span>
-            <div class="segmented" style={{ minWidth: '160px' }}>
+          <div class={`row spread region-${r}`} key={r}>
+            <span class="row callout" style={{ gap: '0' }}>
+              <span class="region-dot" aria-hidden="true" />
+              {REGION_LABEL[r]}
+            </span>
+            <div class="segmented" style={{ minWidth: '150px' }}>
               {(['left', 'right'] as Side[]).map((side) => (
                 <button key={side} aria-pressed={s.defaultSides[r] === side} onClick={() => void updateSettings({ defaultSides: { ...s.defaultSides, [r]: side } })}>
                   {side === 'left' ? 'Sol' : 'Sağ'}
@@ -165,26 +168,27 @@ export function SettingsScreen() {
         ))}
       </section>
 
+      <h2 class="section-title">Yedekleme</h2>
       <section class="card stack">
-        <h2>Yedekleme</h2>
         <div class="row spread">
-          <span>Son yedek</span>
-          <strong>{s.lastBackupAt ? new Date(s.lastBackupAt).toLocaleString('tr-TR') : 'Hiç'}</strong>
+          <span class="callout">Son yedek</span>
+          <strong class="callout num">{s.lastBackupAt ? new Date(s.lastBackupAt).toLocaleString('tr-TR') : 'Hiç'}</strong>
         </div>
         <Stepper label="Hatırlatma (gün)" value={s.backupReminderDays} min={1} max={60} onChange={(v) => void updateSettings({ backupReminderDays: v })} />
         <a class="btn primary block big" href="#/settings/backup">
-          Yedekle / geri yükle ›
+          <IconShield aria-hidden="true" />
+          Yedekle / geri yükle
         </a>
       </section>
 
       <StorageInfo />
       <DangerZone />
 
-      <section class="card small muted">
+      <div class="small faint center" style={{ padding: 'var(--s-4) 0' }}>
         <div>RehabFlow sürüm {__APP_VERSION__}</div>
         <div>Son güncelleme: {buildDate.toLocaleString('tr-TR')}</div>
-        <div>Veriler sadece bu cihazda saklanır. Uygulama hiçbir sunucuya veri göndermez.</div>
-      </section>
+        <div style={{ marginTop: 'var(--s-2)' }}>Veriler sadece bu cihazda saklanır. Uygulama hiçbir sunucuya veri göndermez.</div>
+      </div>
     </div>
   );
 }

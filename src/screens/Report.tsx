@@ -1,4 +1,6 @@
 import '../styles/print.css';
+import { IconReport } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 import { useState } from 'preact/hooks';
 import { BlobImage } from '../components/BlobImage';
 import { MiniChart } from '../components/MiniChart';
@@ -32,10 +34,7 @@ export function Report() {
   return (
     <div class="stack">
       <div class="no-print stack">
-        <a class="btn ghost" href="#/progress">
-          ‹ İlerleme
-        </a>
-        <h1>Doktor raporu</h1>
+        <PageHeader title="Doktor raporu" back={{ href: '#/progress', label: 'İlerleme' }} />
         <div class="row">
           <label class="field grow">
             <span>Başlangıç</span>
@@ -68,6 +67,7 @@ export function Report() {
           </details>
         )}
         <button class="btn primary big block" onClick={() => window.print()}>
+          <IconReport aria-hidden="true" />
           Yazdır / PDF olarak kaydet
         </button>
         <p class="small muted" style={{ margin: '0px' }}>

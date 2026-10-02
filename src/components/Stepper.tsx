@@ -1,3 +1,5 @@
+import { IconMinus, IconPlus } from './Icons';
+
 interface Props {
   label: string;
   value: number;
@@ -12,17 +14,17 @@ export function Stepper({ label, value, onChange, step = 1, min = 0, max = 9999,
   const set = (v: number) => onChange(Math.min(max, Math.max(min, Math.round(v * 100) / 100)));
   return (
     <div class="row spread">
-      <span>{label}</span>
+      <span class="callout">{label}</span>
       <div class="stepper">
-        <button type="button" class="icon-btn" aria-label={`${label} azalt`} onClick={() => set(value - step)}>
-          −
+        <button type="button" class="icon-btn" aria-label={`${label} azalt`} disabled={value <= min} onClick={() => set(value - step)}>
+          <IconMinus aria-hidden="true" />
         </button>
         <output aria-live="polite">
           {value}
-          {unit ? ` ${unit}` : ''}
+          {unit ? <span class="small muted"> {unit}</span> : ''}
         </output>
-        <button type="button" class="icon-btn" aria-label={`${label} artır`} onClick={() => set(value + step)}>
-          +
+        <button type="button" class="icon-btn" aria-label={`${label} artır`} disabled={value >= max} onClick={() => set(value + step)}>
+          <IconPlus aria-hidden="true" />
         </button>
       </div>
     </div>

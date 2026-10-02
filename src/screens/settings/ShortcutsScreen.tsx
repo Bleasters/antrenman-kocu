@@ -1,4 +1,6 @@
 import { useState } from 'preact/hooks';
+import { IconBell, IconPhone } from '../../components/Icons';
+import { PageHeader } from '../../components/PageHeader';
 import { isStandalone } from '../../platform/storage';
 
 const LINKS = [
@@ -37,16 +39,13 @@ export function ShortcutsScreen() {
   const base = `${location.origin}${location.pathname}`;
   return (
     <div class="stack">
-      <a class="btn ghost" href="#/settings">
-        ‹ Ayarlar
-      </a>
-      <h1>iOS Kısayol kurulumu</h1>
+      <PageHeader title="iOS Kısayol kurulumu" back={{ href: '#/settings', label: 'Ayarlar' }} />
       <p>
         iOS, ana ekran uygulamalarına zamanlanmış bildirim gönderme imkânı vermiyor. Hatırlatmalar için iPhone'daki <strong>Kısayollar</strong> uygulamasının
         kişisel otomasyonlarını kullanıyoruz.
       </p>
 
-      <section class="card orange small">
+      <section class="card orange callout">
         <strong>Önemli: Safari ile uygulama ayrı depolama kullanır.</strong> Kısayoldaki "URL'yi Aç" eylemi genellikle ana ekran uygulamasını değil{' '}
         <strong>Safari'yi</strong> açar. Safari'de girdiğin veriler RehabFlow uygulamasında <strong>görünmez</strong>. Bu yüzden aşağıdaki yöntemde kısayol sadece
         hatırlatır, uygulamayı sen ana ekran ikonundan açarsın.
@@ -54,7 +53,10 @@ export function ShortcutsScreen() {
       </section>
 
       <section class="card stack">
-        <h2>Önerilen: bildirim otomasyonu</h2>
+        <h2 class="card-title">
+          <IconBell aria-hidden="true" />
+          Önerilen: bildirim otomasyonu
+        </h2>
         <ol style={{ margin: '0px', paddingLeft: '20px' }}>
           <li>
             <strong>Kısayollar</strong> uygulamasını aç → alttan <strong>Otomasyon</strong> → <strong>+</strong> (Yeni Otomasyon).
@@ -76,7 +78,10 @@ export function ShortcutsScreen() {
       </section>
 
       <section class="card stack">
-        <h2>Deep linkler</h2>
+        <h2 class="card-title">
+          <IconPhone aria-hidden="true" />
+          Deep linkler
+        </h2>
         <p class="small muted" style={{ margin: '0px' }}>
           Bu linkler uygulamanın ilgili ekranını doğrudan açar. Kısayoldan açtığında Safari açılıyorsa (yukarıdaki uyarı) bunları kullanma; verilerin ana ekran
           uygulamasında kalsın. Davranış iOS sürümüne göre değişebilir; kendi telefonunda bir kez dene.

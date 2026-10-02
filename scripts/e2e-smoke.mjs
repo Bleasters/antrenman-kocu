@@ -67,7 +67,7 @@ try {
   // jump to the editor and come back: selection is kept
   await page.getByRole('button', { name: 'Ayak bileği alfabesi düzenle' }).click();
   await page.getByRole('heading', { name: 'Egzersizi düzenle' }).waitFor();
-  await page.getByRole('link', { name: '‹ Seansa dön' }).click();
+  await page.getByRole('link', { name: 'Seansa dön' }).click();
   await page.getByText('2 hareket seçili').waitFor();
   if (await page.getByRole('checkbox', { name: /Havlu ile baldır germe/ }).isChecked()) throw new Error('pick was not kept');
   await shot(page, 'session-regions');
@@ -85,7 +85,7 @@ try {
   await page.getByRole('button', { name: 'Set bitti' }).click();
   await page.getByText('Dinlenme').waitFor();
   await shot(page, 'session-rest');
-  await page.getByRole('button', { name: 'Atla ›' }).last().click();
+  await page.getByRole('button', { name: 'Atla', exact: true }).last().click();
 
   // Crash recovery: reload in the middle of a session
   await page.reload();
@@ -101,10 +101,10 @@ try {
   for (let i = 0; i < 12; i++) await page.getByRole('button', { name: '+1' }).click();
   await shot(page, 'session-reps');
   await page.getByRole('button', { name: 'Set bitti' }).click();
-  await page.getByRole('button', { name: 'Atla ›' }).last().click(); // skip rest
+  await page.getByRole('button', { name: 'Atla', exact: true }).last().click(); // skip rest
 
   // Leave early → after pain
-  await page.getByRole('button', { name: '✕ Çık' }).click();
+  await page.getByRole('button', { name: 'Çık', exact: true }).click();
   await page.getByRole('button', { name: /Erken bitir/ }).click();
   await page.getByRole('heading', { name: 'Seans sonrası' }).waitFor();
   await page.getByRole('group', { name: 'Ayak bileği' }).getByRole('button', { name: '5', exact: true }).click();
@@ -235,7 +235,7 @@ try {
   await page.getByRole('button', { name: /Ameliyat sonrası/ }).click();
   await page.getByRole('dialog', { name: 'Görsel' }).waitFor();
   await shot(page, 'archive-viewer');
-  await page.getByRole('button', { name: '✕ Kapat' }).click();
+  await page.getByRole('button', { name: 'Kapat', exact: true }).click();
   await page.getByRole('button', { name: 'Karşılaştır', exact: true }).click();
   await page.getByRole('button', { name: /Ameliyat sonrası/ }).click();
   await page.getByRole('button', { name: /6\. hafta/ }).click();
@@ -243,7 +243,7 @@ try {
   await page.getByRole('button', { name: 'Üst üste' }).click();
   await page.getByLabel('Kaydırıcı').fill('30');
   await shot(page, 'archive-compare');
-  await page.getByRole('button', { name: '✕ Kapat' }).click();
+  await page.getByRole('button', { name: 'Kapat', exact: true }).click();
 
   // Progress shows ROM + load charts
   await page.goto(`${URL}#/progress`);

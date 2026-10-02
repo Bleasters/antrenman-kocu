@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { Stepper } from '../../components/Stepper';
 import { db } from '../../db/db';
@@ -71,10 +72,10 @@ export function ExerciseForm({ id }: { id: string }) {
 
   return (
     <div class="stack">
-      <a class="btn ghost" href={returnToSession.value ? '#/session' : '#/settings/program'}>
-        {returnToSession.value ? '‹ Seansa dön' : '‹ Program'}
-      </a>
-      <h1>{isNew ? 'Yeni egzersiz' : 'Egzersizi düzenle'}</h1>
+      <PageHeader
+        title={isNew ? 'Yeni egzersiz' : 'Egzersizi düzenle'}
+        back={returnToSession.value ? { href: '#/session', label: 'Seansa dön' } : { href: '#/settings/program', label: 'Program' }}
+      />
       {isSample && <p class="tag sample">Örnek egzersiz — kendi programına göre düzenle</p>}
 
       <label class="field">

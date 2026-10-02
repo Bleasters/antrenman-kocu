@@ -1,5 +1,7 @@
 import { useState } from 'preact/hooks';
 import { BlobImage } from '../components/BlobImage';
+import { IconClose, IconColumns, IconImage, IconInfo, IconPlus } from '../components/Icons';
+import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { ZoomView } from '../components/ZoomView';
 import { db } from '../db/db';
@@ -58,7 +60,8 @@ function Viewer({ item, onClose }: { item: Media; onClose: () => void }) {
     <div class="viewer" role="dialog" aria-modal="true" aria-label="Görsel">
       <div class="row spread">
         <button class="btn" onClick={onClose}>
-          ✕ Kapat
+          <IconClose aria-hidden="true" />
+          Kapat
         </button>
         <button class="btn" onClick={() => setEditing(true)}>
           Düzenle
@@ -119,7 +122,8 @@ function Compare({ a, b, onClose }: { a: Media; b: Media; onClose: () => void })
     <div class="viewer" role="dialog" aria-modal="true" aria-label="Karşılaştırma">
       <div class="row spread">
         <button class="btn" onClick={onClose}>
-          ✕ Kapat
+          <IconClose aria-hidden="true" />
+          Kapat
         </button>
         <div class="segmented grow" role="group" aria-label="Karşılaştırma modu">
           <button aria-pressed={mode === 'side'} onClick={() => setMode('side')}>
@@ -211,17 +215,18 @@ export function Archive() {
 
   return (
     <div class="stack">
-      <div class="row spread">
+      <div class="row spread page-header">
         <h1 style={{ margin: '0px' }}>Arşiv</h1>
         {list.length >= 2 && (
           <button
-            class={`btn${compareMode ? ' selected' : ''}`}
+            class={`btn compact${compareMode ? ' selected' : ' tinted'}`}
             aria-pressed={compareMode}
             onClick={() => {
               setCompareMode(!compareMode);
               setPicked([]);
             }}
           >
+            <IconColumns aria-hidden="true" />
             Karşılaştır
           </button>
         )}
@@ -233,12 +238,22 @@ export function Archive() {
           </button>
         ))}
       </div>
-      {compareMode && <p class="banner info small">Karşılaştırmak için iki görsel seç ({picked.length}/2).</p>}
+      {compareMode && (
+        <p class="banner info">
+          <IconInfo aria-hidden="true" />
+          <span class="grow">Karşılaştırmak için iki görsel seç ({picked.length}/2).</span>
+        </p>
+      )}
 
-      {groups.length === 0 && <div class="empty">Henüz görsel yok. Röntgen ya da fotoğraf ekle.</div>}
+      {groups.length === 0 && (
+        <EmptyState icon={IconImage} title="Henüz görsel yok" text="Röntgen ya da fotoğraf ekleyerek iyileşme sürecini zaman çizelgesinde takip et." />
+      )}
       {groups.map((g) => (
         <section key={g.key}>
-          <h2 class="section-title">{g.label}</h2>
+          <h2 class={`section-title row region-${g.key}`} style={{ gap: '0' }}>
+            <span class="region-dot" aria-hidden="true" />
+            {g.label}
+          </h2>
           <div class="media-grid">
             {g.items.map((m) => {
               const idx = picked.indexOf(m.id);
@@ -274,7 +289,8 @@ export function Archive() {
           </button>
         ) : (
           <label class={`btn primary big block${busy ? ' disabled' : ''}`}>
-            {busy ? 'İşleniyor…' : '+ Röntgen / fotoğraf ekle'}
+            {!busy && <IconPlus aria-hidden="true" />}
+            {busy ? 'İşleniyor…' : 'Röntgen / fotoğraf ekle'}
             <input
               class="sr-only"
               type="file"

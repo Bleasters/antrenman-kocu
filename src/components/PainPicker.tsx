@@ -25,11 +25,17 @@ export function PainPicker({ value, onChange, label }: PickerProps) {
 export function PainInput({ value, onChange, label }: PickerProps) {
   return (
     <div class="stack">
-      <div class="row spread">
-        <strong>{label}</strong>
+      <div class="row spread" style={{ alignItems: 'flex-end' }}>
+        <div>
+          <div class="headline row" style={{ gap: '0' }}>
+            <span class="region-dot" aria-hidden="true" />
+            {label}
+          </div>
+          <div class="small faint">0 ağrı yok · 10 dayanılmaz</div>
+        </div>
         <span class="pain-value" aria-live="polite">
           {value ?? '–'}
-          <span class="muted small">/10</span>
+          <span class="of muted">/10</span>
         </span>
       </div>
       <input
@@ -41,10 +47,6 @@ export function PainInput({ value, onChange, label }: PickerProps) {
         aria-label={`${label ?? 'Ağrı'} kaydırıcı`}
         onInput={(e) => onChange(Number((e.target as HTMLInputElement).value))}
       />
-      <div class="pain-scale" aria-hidden="true">
-        <span>0 ağrı yok</span>
-        <span>10 dayanılmaz</span>
-      </div>
       <PainPicker value={value} onChange={onChange} label={label} />
     </div>
   );
