@@ -1,4 +1,4 @@
-import type { PainMap, Region, Session } from '../db/types';
+import type { PainMap, Region, RomMeasurement, RomMovement, Session } from '../db/types';
 import { addDays, daysBetween, startOfWeek } from './dates';
 
 export type RegionFilter = Region | 'all';
@@ -144,4 +144,97 @@ export function daysSinceBackup(lastBackupAt: number | undefined, installedAt: n
 
 export function backupOverdue(lastBackupAt: number | undefined, installedAt: number, reminderDays: number, now: number): boolean {
   return daysSinceBackup(lastBackupAt, installedAt, now) >= reminderDays;
+}
+
+// ---------- Load / volume ----------
+
+export type LoadMetric = 'volume' | 'reps' | 'hold' | 'duration';
+
+export const LOAD_METRIC_LABEL: Record<LoadMetric, { title: string; unit: string }> = {
+  volume: { title: 'Toplam hacim (set × tekrar × kg)', unit: 'kg' },
+  reps: { title: 'Toplam tekrar', unit: 'tekrar' },
+  hold: { title: 'En uzun tutuş', unit: 'sn' },
+  duration: { title: 'En uzun süre', unit: 'sn' },
+};
+
+export interface LoadExercise {
+  exerciseId: string;
+  name: string;
+  region?: Region;
+}
+
+/** Exercises that have at least one completed set in the filtered sessions. */
+export function exercisesWithLoad(sessions: Session[], region: RegionFilter, from?: string): LoadExercise[] {
+  const seen = new Map<string, LoadExercise>();
+  for (const s of filterSessions(sessions, region, from)) {
+    for (const e of s.entries) {
+      if (region !== 'all' && e.region && e.region !== region) continue;
+      if (!e.sets.some((x) => x.done)) continue;
+      seen.set(e.exerciseId, { exerciseId: e.exerciseId, name: e.name ?? 'Egzersiz', region: e.region });
+    }
+  }
+  return [...seen.values()];
+}
+
+export interface LoadSeries {
+  metric: LoadMetric;
+  dates: string[];
+  values: number[];
+}
+
+/**
+ * Per session: reps → Σ reps×kg when any set in range carries a load (else Σ reps);
+ * hold → max hold seconds; timed → max duration seconds. Only completed sets count.
+ */
+export function loadSeries(sessions: Session[], exerciseId: string, from?: string): LoadSeries {
+  const rows = filterSessions(sessions, 'all', from)
+    .map((s) => ({ s, e: s.entries.find((x) => x.exerciseId === exerciseId) }))
+    .filter((r): r is { s: Session; e: NonNullable<typeof r.e> } => !!r.e && r.e.sets.some((x) => x.done));
+  const kind = rows.find((r) => r.e.kind)?.e.kind ?? 'reps';
+  const anyLoad = rows.some((r) => r.e.sets.some((x) => x.done && (x.loadKg ?? 0) > 0));
+  const metric: LoadMetric = kind === 'hold' ? 'hold' : kind === 'timed' ? 'duration' : anyLoad ? 'volume' : 'reps';
+  const values = rows.map(({ e }) => {
+    const done = e.sets.filter((x) => x.done);
+    switch (metric) {
+      case 'volume':
+        return round1(done.reduce((a, x) => a + (x.reps ?? 0) * (x.loadKg ?? 0), 0));
+      case 'reps':
+        return done.reduce((a, x) => a + (x.reps ?? 0), 0);
+      case 'hold':
+        return Math.max(0, ...done.map((x) => x.holdSec ?? 0));
+      case 'duration':
+        return Math.max(0, ...done.map((x) => x.durationSec ?? 0));
+    }
+  });
+  return { metric, dates: rows.map((r) => r.s.date), values };
+}
+
+// ---------- ROM ----------
+
+export interface RomSeries {
+  dates: string[];
+  left: (number | null)[];
+  right: (number | null)[];
+}
+
+/** One point per date and side (the latest measurement of that day wins). */
+export function romSeries(rom: RomMeasurement[], movement: RomMovement, from?: string): RomSeries {
+  const list = rom
+    .filter((r) => r.movement === movement && (!from || r.date >= from))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
+  const dates = [...new Set(list.map((r) => r.date))];
+  const pick = (side: 'left' | 'right') =>
+    dates.map((d) => {
+      const day = list.filter((r) => r.date === d && r.side === side);
+      return day.length ? day[day.length - 1].angleDeg : null;
+    });
+  return { dates, left: pick('left'), right: pick('right') };
+}
+
+/** True if no ROM measurement exists in the last 7 days (incl. today). */
+export function romDue(rom: RomMeasurement[], today: string): boolean {
+  return !rom.some((r) => {
+    const d = daysBetween(r.date, today);
+    return d >= 0 && d <= 6;
+  });
 }

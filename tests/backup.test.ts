@@ -174,9 +174,10 @@ describe('replace mode', () => {
     expect(await d.exercises.count()).toBe(0);
 
     const snap = await getPreReplaceSnapshot(d);
-    expect(snap?.data.sessions).toHaveLength(2);
+    expect(snap?.file.data.sessions).toHaveLength(2);
+    expect(snap?.media).toBeNull(); // data-only replace leaves media alone
     // the snapshot can itself be restored
-    const restore = parseBackup(JSON.stringify(snap));
+    const restore = parseBackup(JSON.stringify(snap?.file));
     if (!restore.ok) throw new Error(restore.error);
     await importBackup(d, restore.file, 'replace');
     expect(await dump(d)).toEqual(before);

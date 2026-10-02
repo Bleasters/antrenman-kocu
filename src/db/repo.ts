@@ -1,7 +1,7 @@
 import { db, SETTINGS_ID } from './db';
 import { newId } from './ids';
 import { defaultSettings } from './seed';
-import type { Exercise, Region, Session, Settings } from './types';
+import type { Exercise, Media, Region, RomMeasurement, Session, Settings } from './types';
 import { REGIONS } from './types';
 import { toISODate } from '../logic/dates';
 
@@ -181,4 +181,38 @@ export async function readActiveProgress(): Promise<SessionProgress | null> {
   if (!p) return null;
   const s = await db.sessions.get(p.sessionId);
   return s && s.endedAt == null ? p : null;
+}
+
+// ---------- ROM ----------
+
+export type RomInput = Omit<RomMeasurement, 'id' | 'createdAt' | 'updatedAt'>;
+
+export async function saveRom(input: RomInput): Promise<string> {
+  const now = Date.now();
+  const rec: RomMeasurement = { ...input, id: newId(), createdAt: now, updatedAt: now };
+  await db.rom.add(rec);
+  return rec.id;
+}
+
+export async function deleteRom(id: string): Promise<void> {
+  await db.rom.delete(id);
+}
+
+// ---------- Media ----------
+
+export type MediaInput = Omit<Media, 'id' | 'createdAt' | 'updatedAt'>;
+
+export async function saveMedia(input: MediaInput): Promise<string> {
+  const now = Date.now();
+  const rec: Media = { ...input, id: newId(), createdAt: now, updatedAt: now };
+  await db.media.add(rec);
+  return rec.id;
+}
+
+export async function updateMedia(id: string, patch: Partial<Pick<Media, 'date' | 'region' | 'kind' | 'note'>>): Promise<void> {
+  await db.media.update(id, { ...patch, updatedAt: Date.now() });
+}
+
+export async function deleteMedia(id: string): Promise<void> {
+  await db.media.delete(id);
 }

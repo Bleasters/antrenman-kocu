@@ -224,6 +224,10 @@ p {
   user-select: none;
   -webkit-user-select: none;
 }
+a.btn,
+label.btn {
+  color: var(--text);
+}
 .btn:active {
   transform: scale(0.98);
 }
@@ -683,4 +687,129 @@ input[type='range'] {
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 12px);
   z-index: 5;
   padding-top: 8px;
+}
+
+/* ---------- archive ---------- */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.media-tile {
+  position: relative;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+  aspect-ratio: 1;
+  cursor: pointer;
+}
+.media-tile img,
+.media-tile > div.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.media-tile .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.7));
+  text-align: left;
+}
+.media-tile.selected {
+  border-color: var(--accent);
+}
+.media-tile .badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 8px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 8px);
+}
+.viewer .btn {
+  background: #222;
+  color: #fff;
+  border-color: #444;
+}
+.viewer .btn.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.viewer .segmented {
+  background: #222;
+}
+.viewer .segmented button {
+  color: #fff;
+}
+.viewer .segmented button[aria-pressed='true'] {
+  background: #444;
+}
+.viewer-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 6px;
+}
+.viewer-stage.two {
+  grid-template-columns: 1fr 1fr;
+}
+.zoom-view {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.zoom-content {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+.zoom-content img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+.overlay-pair {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.overlay-pair img {
+  position: absolute;
+  inset: 0;
+}
+.viewer-caption {
+  font-size: 0.85rem;
+  color: #ccc;
+  text-align: center;
+  padding: 4px 0;
 }

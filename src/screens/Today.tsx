@@ -4,7 +4,9 @@ import { discardActiveSession, readActiveProgress } from '../db/repo';
 import { useLive } from '../db/live';
 import { evaluateAll, useExercises, useSessions, useSettings } from '../hooks';
 import { formatLongTR, todayISO } from '../logic/dates';
-import { backupOverdue, daysSinceBackup, morningPainTarget, weeklySummary } from '../logic/stats';
+import { backupOverdue, daysSinceBackup, morningPainTarget, romDue, weeklySummary } from '../logic/stats';
+import { db } from '../db/db';
+import type { RomMeasurement } from '../db/types';
 import { isStandalone } from '../platform/storage';
 import { navigate } from '../router';
 import { prefs } from '../state';
@@ -41,6 +43,7 @@ export function Today() {
   const sessions = useSessions();
   const exercises = useExercises();
   const active = useLive(readActiveProgress, [], null);
+  const rom = useLive<RomMeasurement[] | undefined>(() => db.rom.toArray(), [], undefined);
   if (!settings || !sessions) return null;
 
   const today = todayISO();
@@ -81,6 +84,20 @@ export function Today() {
       )}
 
       {morningTarget && <MorningPainCard session={morningTarget} />}
+
+      {rom && romDue(rom, today) && (
+        <section class="card">
+          <div class="row spread">
+            <div>
+              <h2 style={{ margin: 0 }}>ROM ölçümü zamanı</h2>
+              <div class="small muted">Son 7 günde hareket açıklığı ölçmedin.</div>
+            </div>
+            <a class="btn" href="#/rom">
+              Ölç
+            </a>
+          </div>
+        </section>
+      )}
 
       {lastEval ? (
         <RuleCard ev={lastEval} />
