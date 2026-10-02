@@ -87,7 +87,7 @@ export function Progress() {
           values={[pain.before, pain.after, pain.morning]}
           yRange={[0, 10]}
         />
-        <p class="small muted" style={{ marginBottom: 0 }}>
+        <p class="small muted" style={{ marginBottom: '0px' }}>
           Değerleri görmek için grafiğe dokun ya da parmağını kaydır.
         </p>
       </section>
@@ -105,7 +105,7 @@ export function Progress() {
 
       <section class="card">
         <div class="row spread">
-          <h2 style={{ margin: 0 }}>Hareket açıklığı (ROM)</h2>
+          <h2 style={{ margin: '0px' }}>Hareket açıklığı (ROM)</h2>
           <a class="btn" href="#/rom">
             Ölç
           </a>
@@ -143,7 +143,7 @@ export function Progress() {
           <div class="empty">Bu aralıkta tamamlanmış set yok.</div>
         ) : (
           <>
-            <select aria-label="Egzersiz" value={exId} onChange={(e) => setExercise((e.target as HTMLSelectElement).value)} style={{ marginBottom: 6 }}>
+            <select aria-label="Egzersiz" value={exId} onChange={(e) => setExercise((e.target as HTMLSelectElement).value)} style={{ marginBottom: '6px' }}>
               {loadExercises.map((e) => (
                 <option key={e.exerciseId} value={e.exerciseId}>
                   {e.name}

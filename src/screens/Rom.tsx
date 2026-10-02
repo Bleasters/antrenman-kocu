@@ -125,7 +125,7 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
         </p>
       )}
 
-      <p class="small muted" style={{ margin: 0 }}>
+      <p class="small muted" style={{ margin: '0px' }}>
         {g0 ? '2) Hareketin sonuna git ve tut, sonra "Ölç".' : '1) Nötr pozisyonda telefonu yerleştir ve "Sıfırla".'}
       </p>
       <div class="bottom-actions two">
@@ -198,7 +198,7 @@ function ManualMeasure({ onResult }: { onResult: (angle: number, date: string) =
   const valid = value.trim() !== '' && Number.isFinite(n) && n >= -30 && n <= 200;
   return (
     <div class="stack">
-      <p class="small muted" style={{ margin: 0 }}>
+      <p class="small muted" style={{ margin: '0px' }}>
         Gonyometreyle ya da fizyoterapistinin ölçtüğü değeri gir.
       </p>
       <div class="row">
@@ -229,7 +229,7 @@ function RomItem({ m }: { m: RomMeasurement }) {
   const trials = trialsText(m.trials);
   return (
     <li style={{ flexWrap: 'wrap' }}>
-      <div class="grow" style={{ minWidth: 0 }}>
+      <div class="grow" style={{ minWidth: '0px' }}>
         <strong>{m.angleDeg}°</strong> <span class="muted small">· {formatLongTR(m.date)} · {m.method === 'sensor' ? 'sensör' : 'manuel'}</span>
         {trials && <div class="small muted">{trials}</div>}
         {m.notes && !editing && (
@@ -342,7 +342,7 @@ export function Rom() {
       </div>
       <div class="row spread">
         <span>Taraf</span>
-        <div class="segmented" style={{ minWidth: 160 }}>
+        <div class="segmented" style={{ minWidth: '160px' }}>
           {(['left', 'right'] as Side[]).map((s) => (
             <button key={s} aria-pressed={side === s} onClick={() => setSide(s)}>
               {SIDE_LABEL[s]}
@@ -354,8 +354,8 @@ export function Rom() {
       <section class="card stack">
         <h2>{info.label}</h2>
         <PlacementDiagram movement={movement} />
-        <p style={{ margin: 0 }}>{info.placement}</p>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p style={{ margin: '0px' }}>{info.placement}</p>
+        <p class="small muted" style={{ margin: '0px' }}>
           Doğruluk yaklaşık ±5°. Önemli olan her seferinde aynı pozisyon ve yerleşimle ölçmek.
         </p>
       </section>
@@ -381,8 +381,8 @@ export function Rom() {
           <ManualMeasure key={`${movement}-${side}`} onResult={(a, d) => void store(a, 'manual', d)} />
         )}
         {saved && (
-          <div class="row spread" style={{ marginTop: 12 }}>
-            <p role="status" style={{ color: 'var(--green)', fontWeight: 600, margin: 0 }}>
+          <div class="row spread" style={{ marginTop: '12px' }}>
+            <p role="status" style={{ color: 'var(--green)', fontWeight: 600, margin: '0px' }}>
               ✓ {saved.text}
             </p>
             <button

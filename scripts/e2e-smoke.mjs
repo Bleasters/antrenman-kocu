@@ -60,6 +60,16 @@ try {
   // Full session: ankle only
   await page.goto(`${URL}#/session`);
   await page.getByRole('button', { name: /Ayak bileği/ }).click();
+  await page.getByText('3 hareket seçili').waitFor();
+  // skip one exercise for this session only
+  await page.getByRole('checkbox', { name: /Havlu ile baldır germe/ }).uncheck();
+  await page.getByText('2 hareket seçili').waitFor();
+  // jump to the editor and come back: selection is kept
+  await page.getByRole('button', { name: 'Ayak bileği alfabesi düzenle' }).click();
+  await page.getByRole('heading', { name: 'Egzersizi düzenle' }).waitFor();
+  await page.getByRole('link', { name: '‹ Seansa dön' }).click();
+  await page.getByText('2 hareket seçili').waitFor();
+  if (await page.getByRole('checkbox', { name: /Havlu ile baldır germe/ }).isChecked()) throw new Error('pick was not kept');
   await shot(page, 'session-regions');
   await page.getByRole('button', { name: 'Seansı başlat' }).click();
   await page.getByRole('heading', { name: 'Seans öncesi ağrı' }).waitFor();
@@ -85,9 +95,9 @@ try {
   await page.getByRole('button', { name: 'Set bitti' }).click();
   await page.getByRole('button', { name: /Sonraki egzersiz/ }).click();
 
-  // Exercise 2 (hold): skip; exercise 3 (reps): count to target
-  await page.getByRole('button', { name: 'Atla ›' }).first().click();
+  // the unticked hold exercise is not in the session: next is the reps exercise
   await page.getByRole('heading', { name: 'Bantlı dorsifleksiyon' }).waitFor();
+  await page.getByText('Egzersiz 2/2').waitFor();
   for (let i = 0; i < 12; i++) await page.getByRole('button', { name: '+1' }).click();
   await shot(page, 'session-reps');
   await page.getByRole('button', { name: 'Set bitti' }).click();

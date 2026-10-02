@@ -1,4 +1,5 @@
 import { route } from '../router';
+import { returnToSession } from '../state';
 import { IconChart, IconGear, IconHome, IconImage, IconPlay } from './Icons';
 
 const TABS = [
@@ -17,7 +18,7 @@ export function TabBar() {
         {TABS.map(({ path, label, Icon }) => {
           const active = path === '/' ? cur === '/' : cur === path || cur.startsWith(`${path}/`);
           return (
-            <a key={path} href={`#${path}`} aria-current={active ? 'page' : undefined}>
+            <a key={path} href={`#${path}`} aria-current={active ? 'page' : undefined} onClick={() => (returnToSession.value = false)}>
               <Icon />
               {label}
             </a>

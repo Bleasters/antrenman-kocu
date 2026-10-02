@@ -10,7 +10,7 @@ const LINKS = [
 function CopyLink({ url, label }: { url: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div class="stack" style={{ marginTop: 8 }}>
+    <div class="stack" style={{ marginTop: '8px' }}>
       <strong>{label}</strong>
       <div class="row">
         <input type="text" readOnly value={url} aria-label={`${label} linki`} onFocus={(e) => (e.target as HTMLInputElement).select()} />
@@ -50,12 +50,12 @@ export function ShortcutsScreen() {
         <strong>Önemli: Safari ile uygulama ayrı depolama kullanır.</strong> Kısayoldaki "URL'yi Aç" eylemi genellikle ana ekran uygulamasını değil{' '}
         <strong>Safari'yi</strong> açar. Safari'de girdiğin veriler RehabFlow uygulamasında <strong>görünmez</strong>. Bu yüzden aşağıdaki yöntemde kısayol sadece
         hatırlatır, uygulamayı sen ana ekran ikonundan açarsın.
-        {!isStandalone() && <div style={{ marginTop: 6 }}>Şu an bu sayfayı tarayıcı sekmesinde görüyorsun.</div>}
+        {!isStandalone() && <div style={{ marginTop: '6px' }}>Şu an bu sayfayı tarayıcı sekmesinde görüyorsun.</div>}
       </section>
 
       <section class="card stack">
         <h2>Önerilen: bildirim otomasyonu</h2>
-        <ol style={{ margin: 0, paddingLeft: 20 }}>
+        <ol style={{ margin: '0px', paddingLeft: '20px' }}>
           <li>
             <strong>Kısayollar</strong> uygulamasını aç → alttan <strong>Otomasyon</strong> → <strong>+</strong> (Yeni Otomasyon).
           </li>
@@ -70,14 +70,14 @@ export function ShortcutsScreen() {
           </li>
           <li>Bildirim gelince ana ekrandaki RehabFlow ikonuna dokun. Bugün ekranı eksik girişi kartla gösterir.</li>
         </ol>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           Aynı adımlarla ikinci bir otomasyon kur: örneğin 18:00'de <em>"Seans zamanı"</em>. Haftalık ROM ölçümü için Pazar 10:00'da <em>"ROM ölç"</em>.
         </p>
       </section>
 
       <section class="card stack">
         <h2>Deep linkler</h2>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           Bu linkler uygulamanın ilgili ekranını doğrudan açar. Kısayoldan açtığında Safari açılıyorsa (yukarıdaki uyarı) bunları kullanma; verilerin ana ekran
           uygulamasında kalsın. Davranış iOS sürümüne göre değişebilir; kendi telefonunda bir kez dene.
         </p>

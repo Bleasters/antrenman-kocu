@@ -126,7 +126,7 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
       <div class="small muted">
         Egzersiz {p.exIndex + 1}/{session.entries.length}
       </div>
-      <h1 style={{ marginTop: 2 }}>{exercise?.name ?? entry.name ?? 'Egzersiz'}</h1>
+      <h1 style={{ marginTop: '2px' }}>{exercise?.name ?? entry.name ?? 'Egzersiz'}</h1>
       <div class="ex-meta">
         <span class="tag">{REGION_LABEL[exercise?.region ?? entry.region ?? 'wrist']}</span>
         {exercise?.side && <span class="tag">{SIDE_LABEL[exercise.side]}</span>}
@@ -169,9 +169,9 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
             ✓
           </div>
           <div class="spacer" />
-          <div class="card" style={{ marginBottom: 12 }}>
+          <div class="card" style={{ marginBottom: '12px' }}>
             <strong>Egzersiz sırasında en yüksek ağrı (isteğe bağlı)</strong>
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: '8px' }}>
               <PainPicker
                 label="Egzersiz sırasında en yüksek ağrı"
                 value={entry.painDuring}
@@ -186,7 +186,7 @@ export function ExerciseStep({ session, progress: p, exercise, onChange }: Props
       )}
 
       {p.phase === 'work' && set && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: '12px' }}>
           <button class="btn ghost block" aria-expanded={showAdjust} onClick={() => setShowAdjust(!showAdjust)}>
             {showAdjust ? 'Ayarları gizle' : 'Bu seti ayarla (yük / hedef) · ağrı gir'}
           </button>

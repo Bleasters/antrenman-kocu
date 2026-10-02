@@ -48,16 +48,16 @@ export function Report() {
         </div>
         {xrays.length > 0 && (
           <details class="card">
-            <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', fontWeight: 600 }}>Rapora röntgen ekle ({chosen.length} seçili)</summary>
+            <summary style={{ minHeight: '44px', display: 'flex', alignItems: 'center', fontWeight: 600 }}>Rapora röntgen ekle ({chosen.length} seçili)</summary>
             {xrays.map((x) => (
-              <label key={x.id} class="check-row" style={{ marginTop: 8 }}>
+              <label key={x.id} class="check-row" style={{ marginTop: '8px' }}>
                 <input
                   type="checkbox"
                   checked={chosen.includes(x.id)}
                   style={{ accentColor: 'var(--accent)' }}
                   onChange={() => setChosen(chosen.includes(x.id) ? chosen.filter((c) => c !== x.id) : [...chosen, x.id])}
                 />
-                <BlobImage blob={x.thumbBlob ?? x.blob} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
+                <BlobImage blob={x.thumbBlob ?? x.blob} alt="" style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '6px' }} />
                 <span>
                   {formatLongTR(x.date)}
                   {x.region ? ` · ${REGION_LABEL[x.region]}` : ''}
@@ -70,7 +70,7 @@ export function Report() {
         <button class="btn primary big block" onClick={() => window.print()}>
           Yazdır / PDF olarak kaydet
         </button>
-        <p class="small muted" style={{ margin: 0 }}>
+        <p class="small muted" style={{ margin: '0px' }}>
           iPhone'da: Yazdır ekranında önizlemeyi iki parmakla büyüt ya da Paylaş → <em>Dosyalar'a Kaydet</em> ile PDF olarak sakla.
         </p>
       </div>
@@ -140,7 +140,7 @@ export function Report() {
                 ))}
               </tbody>
             </table>
-            <div class="legend" style={{ marginTop: 6 }}>
+            <div class="legend" style={{ marginTop: '6px' }}>
               <span>
                 <i style={{ background: C.before }} />
                 Önce
@@ -206,7 +206,7 @@ export function Report() {
                 ))}
               </tbody>
             </table>
-            <div class="charts" style={{ marginTop: 6 }}>
+            <div class="charts" style={{ marginTop: '6px' }}>
               {r.rom
                 .filter((m) => m.n > 1)
                 .map((m) => (

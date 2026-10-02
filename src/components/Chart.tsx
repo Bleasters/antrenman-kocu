@@ -125,7 +125,7 @@ export function Chart({ labels, series, values, yRange, height = 220, format = (
 
   const shown = idx ?? n - 1;
   return (
-    <figure style={{ margin: 0 }} aria-label={ariaLabel}>
+    <figure style={{ margin: '0px' }} aria-label={ariaLabel}>
       <div class="chart-legend" aria-live="polite">
         <span class="muted">{labels[shown]}</span>
         {series.map((s, i) => {

@@ -36,7 +36,7 @@ function StorageInfo() {
         <span>Çalışma modu</span>
         <strong>{isStandalone() ? 'Ana ekran uygulaması' : 'Tarayıcı sekmesi'}</strong>
       </div>
-      <p class="small muted" style={{ margin: 0 }}>
+      <p class="small muted" style={{ margin: '0px' }}>
         Safari sekmesi ile ana ekran uygulaması ayrı depolama kullanır. Verilerini ana ekran uygulamasında tut.
       </p>
     </section>
@@ -138,7 +138,7 @@ export function SettingsScreen() {
 
       <section class="card stack">
         <h2>Ağrı izleme eşikleri</h2>
-        <p class="small" style={{ margin: 0 }}>
+        <p class="small" style={{ margin: '0px' }}>
           <strong>Eşikleri fizyoterapistinle birlikte belirle.</strong> Bu uygulama tıbbi tavsiye vermez.
         </p>
         <Stepper label="Artış eşiği (sonra − önce ≥)" value={s.painIncreaseThreshold} min={1} max={10} onChange={(v) => void updateSettings({ painIncreaseThreshold: v })} />
@@ -154,7 +154,7 @@ export function SettingsScreen() {
         {REGIONS.map((r) => (
           <div class="row spread" key={r}>
             <span>{REGION_LABEL[r]}</span>
-            <div class="segmented" style={{ minWidth: 160 }}>
+            <div class="segmented" style={{ minWidth: '160px' }}>
               {(['left', 'right'] as Side[]).map((side) => (
                 <button key={side} aria-pressed={s.defaultSides[r] === side} onClick={() => void updateSettings({ defaultSides: { ...s.defaultSides, [r]: side } })}>
                   {side === 'left' ? 'Sol' : 'Sağ'}
