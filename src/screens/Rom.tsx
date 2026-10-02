@@ -4,7 +4,7 @@ import { PlacementDiagram } from '../components/PlacementDiagram';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
 import { deleteRom, saveRom, updateRomMeta } from '../db/repo';
-import { IconColumns, IconInfo, IconNote, IconTrash } from '../components/Icons';
+import { IconColumns, IconInfo, IconNote, IconReset, IconRuler, IconTrash } from '../components/Icons';
 import { healthyReference, needsHealthyMeasurement, otherSide } from '../logic/symmetry';
 import { REGIONS, type Region, type RomMeasurement, type RomMovement, type RomTiming, type Side } from '../db/types';
 import { useSessions, useSettings } from '../hooks';
@@ -128,49 +128,54 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
         </p>
       )}
 
-      <p class="small muted" style={{ margin: '0px' }}>
-        {g0 ? '2) Hareketin sonuna git ve tut, sonra "Ölç".' : '1) Nötr pozisyonda telefonu yerleştir ve "Sıfırla".'}
-      </p>
-      <div class="bottom-actions two">
-        <button
-          class={`btn big${g0 ? '' : ' primary'}`}
-          disabled={!!busy}
-          onClick={async () => {
-            unlockAudio();
-            setMsg(null);
+      <div class="rom-step" aria-live="polite">
+        <span class="overline">Adım {g0 ? 2 : 1} / 2</span>
+        <div class="callout muted">{g0 ? 'Hareketin sonuna git, tut ve "Ölç"e bas.' : 'Nötr pozisyonda telefonu yerleştir ve "Sıfırla"ya bas.'}</div>
+      </div>
+      {/* One big button: "Sıfırla" until the neutral position is captured, then "Ölç". */}
+      <button
+        class="btn primary huge block"
+        disabled={!!busy}
+        onClick={async () => {
+          unlockAudio();
+          setMsg(null);
+          if (!g0) {
             const v = await capture();
             if (v) {
               setG0(v);
               setMsg({ kind: 'ok', text: 'Sıfırlandı.' });
             }
-          }}
-        >
-          Sıfırla
-        </button>
-        <button
-          class={`btn big${g0 ? ' primary' : ''}`}
-          disabled={!g0 || !!busy}
-          onClick={async () => {
-            unlockAudio();
-            setMsg(null);
-            const v = await capture();
-            if (v && g0) {
-              const a = roundAngle(angleBetweenDeg(g0, v));
-              const next = [...trials, a];
-              setG0(null); // re-zero before each trial: the phone may shift on the limb
-              if (next.length >= TRIALS) {
-                save(next); // 3rd trial: store the median right away
-                return;
-              }
-              setTrials(next);
-              const left = TRIALS - next.length;
-              setMsg({ kind: 'ok', text: `${next.length}. ölçüm: ${a}°. Medyan için ${left} ölçüm daha: tekrar Sıfırla → Ölç.` });
+            return;
+          }
+          const v = await capture();
+          if (v) {
+            const a = roundAngle(angleBetweenDeg(g0, v));
+            const next = [...trials, a];
+            setG0(null); // re-zero before each trial: the phone may shift on the limb
+            if (next.length >= TRIALS) {
+              save(next); // 3rd trial: store the median right away
+              return;
             }
+            setTrials(next);
+            const left = TRIALS - next.length;
+            setMsg({ kind: 'ok', text: `${next.length}. ölçüm: ${a}°. Medyan için ${left} ölçüm daha: tekrar Sıfırla → Ölç.` });
+          }
+        }}
+      >
+        {g0 ? <IconRuler aria-hidden="true" /> : <IconReset aria-hidden="true" />}
+        {g0 ? 'Ölç' : 'Sıfırla'}
+      </button>
+      {g0 && !busy && (
+        <button
+          class="btn ghost block compact-text"
+          onClick={() => {
+            setG0(null);
+            setMsg(null);
           }}
         >
-          Ölç
+          Yeniden sıfırla
         </button>
-      </div>
+      )}
 
       {trials.length > 0 && (
         <div class="bottom-actions two">

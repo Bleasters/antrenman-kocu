@@ -1688,3 +1688,8 @@ a.sym-summary {
   color: var(--text);
   text-decoration: none;
 }
+
+.rom-step .overline {
+  display: block;
+  margin-bottom: 2px;
+}
