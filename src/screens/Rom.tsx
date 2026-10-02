@@ -68,7 +68,13 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
     );
   }
 
-  const done = trials.length >= TRIALS;
+  const save = (list: number[]) => {
+    onResult(roundAngle(median(list)), list);
+    setTrials([]);
+    setG0(null);
+    setMsg(null);
+  };
+
   return (
     <div class="stack">
       <label class="switch-row">
@@ -79,14 +85,14 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
       <div class="row spread">
         <span>Ölçüm</span>
         <strong>
-          {Math.min(trials.length + 1, TRIALS)} / {TRIALS}
+          {trials.length + 1} / {TRIALS}
         </strong>
       </div>
       {trials.length > 0 && (
         <div class="chips" aria-label="Ölçümler">
           {trials.map((t, i) => (
             <span class="tag" key={i}>
-              {t}°
+              {i + 1}. {t}°
             </span>
           ))}
         </div>
@@ -103,73 +109,66 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
         </p>
       )}
 
-      {!done && (
-        <>
-          <p class="small muted" style={{ margin: 0 }}>
-            {g0 ? '2) Hareketin sonuna git ve tut, sonra "Ölç".' : '1) Nötr pozisyonda telefonu yerleştir ve "Sıfırla".'}
-          </p>
-          <div class="bottom-actions two">
-            <button
-              class={`btn big${g0 ? '' : ' primary'}`}
-              disabled={!!busy}
-              onClick={async () => {
-                unlockAudio();
-                setMsg(null);
-                const v = await capture();
-                if (v) {
-                  setG0(v);
-                  setMsg({ kind: 'ok', text: 'Sıfırlandı.' });
-                }
-              }}
-            >
-              Sıfırla
-            </button>
-            <button
-              class={`btn big${g0 ? ' primary' : ''}`}
-              disabled={!g0 || !!busy}
-              onClick={async () => {
-                unlockAudio();
-                setMsg(null);
-                const v = await capture();
-                if (v && g0) {
-                  const a = roundAngle(angleBetweenDeg(g0, v));
-                  setTrials([...trials, a]);
-                  setG0(null); // re-zero before each trial: the phone may shift on the limb
-                  setMsg({ kind: 'ok', text: `${a}°` });
-                }
-              }}
-            >
-              Ölç
-            </button>
-          </div>
-        </>
-      )}
+      <p class="small muted" style={{ margin: 0 }}>
+        {g0 ? '2) Hareketin sonuna git ve tut, sonra "Ölç".' : '1) Nötr pozisyonda telefonu yerleştir ve "Sıfırla".'}
+      </p>
+      <div class="bottom-actions two">
+        <button
+          class={`btn big${g0 ? '' : ' primary'}`}
+          disabled={!!busy}
+          onClick={async () => {
+            unlockAudio();
+            setMsg(null);
+            const v = await capture();
+            if (v) {
+              setG0(v);
+              setMsg({ kind: 'ok', text: 'Sıfırlandı.' });
+            }
+          }}
+        >
+          Sıfırla
+        </button>
+        <button
+          class={`btn big${g0 ? ' primary' : ''}`}
+          disabled={!g0 || !!busy}
+          onClick={async () => {
+            unlockAudio();
+            setMsg(null);
+            const v = await capture();
+            if (v && g0) {
+              const a = roundAngle(angleBetweenDeg(g0, v));
+              const next = [...trials, a];
+              setG0(null); // re-zero before each trial: the phone may shift on the limb
+              if (next.length >= TRIALS) {
+                save(next); // 3rd trial: store the median right away
+                return;
+              }
+              setTrials(next);
+              const left = TRIALS - next.length;
+              setMsg({ kind: 'ok', text: `${next.length}. ölçüm: ${a}°. Medyan için ${left} ölçüm daha: tekrar Sıfırla → Ölç.` });
+            }
+          }}
+        >
+          Ölç
+        </button>
+      </div>
 
-      {done && (
-        <div class="card accent center">
-          <div class="small muted">3 ölçümün medyanı</div>
-          <div class="big-number">{roundAngle(median(trials))}°</div>
-          <div class="bottom-actions two" style={{ marginTop: 12 }}>
-            <button
-              class="btn"
-              onClick={() => {
-                setTrials([]);
-                setMsg(null);
-              }}
-            >
-              Baştan al
-            </button>
-            <button
-              class="btn primary"
-              onClick={() => {
-                onResult(roundAngle(median(trials)), trials);
-                setTrials([]);
-                setMsg(null);
-              }}
-            >
-              Kaydet
-            </button>
-          </div>
+      {trials.length > 0 && (
+        <div class="bottom-actions two">
+          <button
+            class="btn"
+            disabled={!!busy}
+            onClick={() => {
+              setTrials([]);
+              setG0(null);
+              setMsg(null);
+            }}
+          >
+            Baştan al
+          </button>
+          <button class="btn" disabled={!!busy} onClick={() => save(trials)}>
+            Şimdi kaydet ({trials.length} ölçüm)
+          </button>
         </div>
       )}
     </div>
@@ -210,7 +209,7 @@ export function Rom() {
   const [sideOverride, setSide] = useState<Side | null>(null);
   const [mode, setMode] = useState<'sensor' | 'manual'>('sensor');
   const [notes, setNotes] = useState('');
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ text: string; id: string } | null>(null);
   const history = useLive(() => db.rom.where('movement').equals(movement).toArray(), [movement], []);
   if (!settings) return null;
   const side = sideOverride ?? settings.defaultSides[region];
@@ -219,8 +218,8 @@ export function Rom() {
 
   const store = async (angle: number, method: 'sensor' | 'manual', date: string, extra?: string) => {
     const note = [extra, notes.trim()].filter(Boolean).join(' · ') || undefined;
-    await saveRom({ date, region, side, movement, angleDeg: angle, method, notes: note });
-    setSaved(`${info.label} (${SIDE_LABEL[side]}): ${angle}° kaydedildi.`);
+    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, notes: note });
+    setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}): ${angle}° kaydedildi.` });
     setNotes('');
   };
 
@@ -294,14 +293,26 @@ export function Rom() {
 
       <section class="card">
         {mode === 'sensor' ? (
-          <SensorMeasure key={`${movement}-${side}`} onResult={(a, t) => void store(a, 'sensor', todayISO(), `Ölçümler: ${t.join('°, ')}°`)} />
+          <SensorMeasure key={`${movement}-${side}`} onResult={(a, t) => void store(a, 'sensor', todayISO(), `${t.length > 1 ? `${t.length} ölçümün medyanı` : 'Tek ölçüm'}: ${t.join('°, ')}°`)} />
         ) : (
           <ManualMeasure key={`${movement}-${side}`} onResult={(a, d) => void store(a, 'manual', d)} />
         )}
         {saved && (
-          <p role="status" style={{ color: 'var(--green)', fontWeight: 600, marginTop: 12, marginBottom: 0 }}>
-            {saved}
-          </p>
+          <div class="row spread" style={{ marginTop: 12 }}>
+            <p role="status" style={{ color: 'var(--green)', fontWeight: 600, margin: 0 }}>
+              ✓ {saved.text}
+            </p>
+            <button
+              class="btn ghost"
+              style={{ whiteSpace: 'nowrap', flex: 'none' }}
+              onClick={async () => {
+                await deleteRom(saved.id);
+                setSaved(null);
+              }}
+            >
+              Geri al
+            </button>
+          </div>
         )}
       </section>
 

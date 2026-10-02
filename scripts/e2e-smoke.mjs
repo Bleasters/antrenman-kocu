@@ -146,13 +146,24 @@ try {
     await page.getByRole('button', { name: 'Sıfırla' }).click();
     await page.getByText('Sıfırlandı.').waitFor();
     await tilt(deg);
-    await page.getByRole('button', { name: 'Ölç' }).click();
-    await page.getByRole('status').filter({ hasText: `${deg}°` }).waitFor();
+    await page.getByRole('button', { name: 'Ölç', exact: true }).click();
+    if (deg !== 40) await page.getByRole('status').filter({ hasText: `${deg}°` }).waitFor();
   }
-  await page.getByText('3 ölçümün medyanı').waitFor();
-  await shot(page, 'rom-sensor');
-  await page.getByRole('button', { name: 'Kaydet' }).click();
+  // the 3rd trial saves the median automatically and it shows up in the list
   await page.getByText(/Ayak bileği dorsifleksiyon \(Sağ\): 22° kaydedildi/).waitFor();
+  await page.locator('.list li').filter({ hasText: '3 ölçümün medyanı: 20°, 22°, 40°' }).waitFor();
+  await shot(page, 'rom-sensor');
+  // undo removes it, a single trial can be saved early
+  await page.getByRole('button', { name: 'Geri al' }).click();
+  await page.getByText('Henüz ölçüm yok.').waitFor();
+  await tilt(0);
+  await page.getByRole('button', { name: 'Sıfırla' }).click();
+  await page.getByText('Sıfırlandı.').waitFor();
+  await tilt(22);
+  await page.getByRole('button', { name: 'Ölç', exact: true }).click();
+  await page.getByText(/1\. ölçüm: 22°\. Medyan için 2 ölçüm daha/).waitFor();
+  await page.getByRole('button', { name: 'Şimdi kaydet (1 ölçüm)' }).click();
+  await page.locator('.list li').filter({ hasText: 'Tek ölçüm: 22°' }).waitFor();
   // shaky window is rejected
   await page.evaluate(() => {
     let i = 0;
