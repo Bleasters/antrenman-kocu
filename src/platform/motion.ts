@@ -1,4 +1,4 @@
-import type { Vec3 } from '../logic/rom';
+import type { TimedSample } from '../logic/rom';
 
 export type MotionPermission = 'granted' | 'denied' | 'unsupported';
 
@@ -22,18 +22,27 @@ export async function requestMotionPermission(): Promise<MotionPermission> {
   return 'granted'; // Android / desktop: no prompt
 }
 
-/** Collects accelerationIncludingGravity samples for durationMs. */
-export function collectSamples(durationMs = 1000): Promise<Vec3[]> {
-  return new Promise((resolve) => {
-    const out: Vec3[] = [];
-    const on = (e: DeviceMotionEvent) => {
-      const a = e.accelerationIncludingGravity;
-      if (a && a.x != null && a.y != null && a.z != null) out.push([a.x, a.y, a.z]);
-    };
-    window.addEventListener('devicemotion', on);
-    setTimeout(() => {
-      window.removeEventListener('devicemotion', on);
-      resolve(out);
-    }, durationMs);
-  });
+export interface MotionStream {
+  samples(): TimedSample[];
+  stop(): void;
+}
+
+/**
+ * Keeps the sensor running while the ROM screen is open (no warm-up per capture) and
+ * buffers the last few seconds of timestamped samples.
+ */
+export function startMotionStream(keepMs = 6000): MotionStream {
+  let buf: TimedSample[] = [];
+  const on = (e: DeviceMotionEvent) => {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x == null || a.y == null || a.z == null) return;
+    const t = performance.now();
+    buf.push({ t, v: [a.x, a.y, a.z] });
+    if (buf.length > 2000 || buf[0].t < t - keepMs) buf = buf.filter((s) => s.t >= t - keepMs);
+  };
+  window.addEventListener('devicemotion', on);
+  return {
+    samples: () => buf,
+    stop: () => window.removeEventListener('devicemotion', on),
+  };
 }

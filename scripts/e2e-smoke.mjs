@@ -164,6 +164,28 @@ try {
   await page.getByText(/1\. ölçüm: 22°\. Medyan için 2 ölçüm daha/).waitFor();
   await page.getByRole('button', { name: 'Şimdi kaydet (1 ölçüm)' }).click();
   await page.locator('.list li').filter({ hasText: 'Tek ölçüm: 22°' }).waitFor();
+  // the tap jolts the phone: shake for 300 ms right after the press, the first press must still succeed
+  const joltThenSteady = (deg) => page.evaluate((d) => {
+    const r = (d * Math.PI) / 180;
+    const steady = [0, 9.81 * Math.sin(r), 9.81 * Math.cos(r)];
+    let i = 0;
+    const id = setInterval(() => { i++; window.__g = [Math.sin(i) * 3, Math.cos(i) * 3, 9.81]; }, 5);
+    setTimeout(() => { clearInterval(id); window.__g = steady; }, 300);
+  }, deg);
+  await joltThenSteady(0);
+  await page.getByRole('button', { name: 'Sıfırla' }).click();
+  await page.getByText('Sıfırlandı.').waitFor();
+  await joltThenSteady(15);
+  await page.getByRole('button', { name: 'Ölç', exact: true }).click();
+  await page.getByText(/1\. ölçüm: 15°/).waitFor();
+  await page.getByRole('button', { name: 'Baştan al' }).click();
+  // add a note to a saved measurement
+  await page.getByRole('button', { name: 'Not ekle' }).first().click();
+  await page.getByLabel('Not', { exact: true }).fill('sabah, ısınmadan önce');
+  await page.getByRole('button', { name: 'Notu kaydet' }).click();
+  await page.locator('.list li').filter({ hasText: 'sabah, ısınmadan önce' }).waitFor();
+  await page.getByRole('button', { name: 'Notu düzenle' }).first().waitFor();
+  await shot(page, 'rom-notes');
   // shaky window is rejected
   await page.evaluate(() => {
     let i = 0;
