@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.log
+.DS_Store
+.vite/
+
+# Never commit real health data or backups
+rehab-yedek-*
+rehabflow-yedek-*
+*.zip
+backups/
+data/
