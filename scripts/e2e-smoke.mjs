@@ -221,6 +221,32 @@ try {
   if (await page.locator('.list li').filter({ hasText: /^12°/ }).count()) throw new Error('pre measurement shown in post list');
   await shot(page, 'rom-manual');
 
+  // Symmetry: after the injured side (right ankle) the app offers the healthy side
+  await page.getByText('Sağlam tarafı da ölçmek ister misin?').waitFor();
+  await shot(page, 'rom-healthy-prompt');
+  await page.getByRole('button', { name: 'Antrenman öncesi', exact: true }).click();
+  await page.getByRole('button', { name: 'Sağlam tarafı ölç' }).click();
+  if ((await page.getByRole('button', { name: 'Sol', exact: true }).getAttribute('aria-pressed')) !== 'true') throw new Error('healthy side not selected');
+  await page.getByText(/Sağlam taraf ölçülüyor/).waitFor();
+  await page.getByLabel('Açı (°)').fill('15');
+  await page.getByLabel('Tarih').fill('2026-09-20');
+  await page.getByRole('button', { name: 'Kaydet' }).click();
+  await page.getByText(/\(Sol, öncesi\): 15° kaydedildi/).waitFor();
+  if (await page.getByText('Sağlam tarafı da ölçmek ister misin?').count()) throw new Error('prompt shown after measuring the healthy side');
+
+  // Symmetry card on Progress (pre-training): 12° / 15° → %80
+  await page.goto(`${URL}#/progress`);
+  await page.getByRole('heading', { name: 'Simetri · yaralı / sağlam taraf' }).waitFor();
+  await page.getByText('Sağ ayak bileği dorsifleksiyon: 12° / sol 15° → %80').waitFor();
+  await shot(page, 'progress-symmetry');
+  // Today summary
+  await page.goto(`${URL}#/`);
+  await page.getByRole('heading', { name: 'Simetri' }).waitFor();
+  // Settings: injured sides (knee not tracked by default)
+  await page.goto(`${URL}#/settings`);
+  if ((await page.getByRole('group', { name: 'Bilek yaralı taraf' }).getByRole('button', { name: 'Sol' }).getAttribute('aria-pressed')) !== 'true') throw new Error('wrist injured side');
+  if ((await page.getByRole('group', { name: 'Diz yaralı taraf' }).getByRole('button', { name: 'Yok' }).getAttribute('aria-pressed')) !== 'true') throw new Error('knee injured side');
+
   // Archive: upload two images, compare
   await page.goto(`${URL}#/archive`);
   for (const note of ['Ameliyat sonrası', '6. hafta']) {
@@ -266,6 +292,7 @@ try {
   await page.goto(`${URL}#/report`);
   await page.getByRole('heading', { name: 'Rehabilitasyon özeti' }).waitFor();
   await page.getByText('Ayak bileği dorsifleksiyon').first().waitFor();
+  await page.getByRole('heading', { name: 'Simetri (yaralı / sağlam taraf)' }).waitFor();
   await shot(page, 'report');
   await page.emulateMedia({ media: 'print' });
   const pdf = await page.pdf({ format: 'A4' });

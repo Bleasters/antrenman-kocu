@@ -1636,3 +1636,55 @@ input.switch:checked::after {
   min-height: var(--tap);
   cursor: pointer;
 }
+
+/* ==========================================================================
+   Symmetry
+   ========================================================================== */
+.sym-value {
+  font-size: var(--fs-hero);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.sym-value .sym-pct {
+  font-size: var(--fs-title3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  margin-right: 2px;
+  letter-spacing: 0;
+}
+.sym-track,
+.mini-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sym-track > span,
+.mini-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--region, var(--accent));
+  transition: width var(--dur-slow) var(--ease);
+}
+.mini-track {
+  width: 72px;
+  height: 6px;
+}
+.sym-lines {
+  list-style: none;
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3) 0 0;
+  border-top: 1px solid var(--hairline);
+}
+.sym-lines li + li {
+  margin-top: var(--s-2);
+}
+a.sym-summary {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+}

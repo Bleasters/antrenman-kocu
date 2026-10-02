@@ -7,7 +7,7 @@ import { Stepper } from '../../components/Stepper';
 import { updateSettings, wipeAllData } from '../../db/repo';
 import { db } from '../../db/db';
 import { ensureSeeded } from '../../db/seed';
-import { REGIONS, type Side } from '../../db/types';
+import { REGIONS, type InjuredSide, type Side } from '../../db/types';
 import { useSettings } from '../../hooks';
 import { REGION_LABEL } from '../../logic/labels';
 import { formatBytes, isPersisted, isStandalone, requestPersistence, storageEstimate } from '../../platform/storage';
@@ -149,23 +149,76 @@ export function SettingsScreen() {
         </label>
       </section>
 
-      <h2 class="section-title">Varsayılan taraflar</h2>
+      <h2 class="section-title">Taraflar ve simetri</h2>
       <section class="card stack">
-        {REGIONS.map((r) => (
-          <div class={`row spread region-${r}`} key={r}>
-            <span class="row callout" style={{ gap: '0' }}>
-              <span class="region-dot" aria-hidden="true" />
-              {REGION_LABEL[r]}
-            </span>
-            <div class="segmented" style={{ minWidth: '150px' }}>
-              {(['left', 'right'] as Side[]).map((side) => (
-                <button key={side} aria-pressed={s.defaultSides[r] === side} onClick={() => void updateSettings({ defaultSides: { ...s.defaultSides, [r]: side } })}>
-                  {side === 'left' ? 'Sol' : 'Sağ'}
-                </button>
-              ))}
+        <div class="row" style={{ gap: 'var(--s-3)', alignItems: 'flex-start' }}>
+          <IconInfo aria-hidden="true" style={{ color: 'var(--accent)', flex: 'none', marginTop: '2px' }} size={20} />
+          <p class="callout muted" style={{ margin: '0' }}>
+            Yaralı taraf, sağlam tarafla karşılaştırılır. <strong style={{ color: 'var(--text)' }}>Hedefi fizyoterapistinle belirle.</strong>
+          </p>
+        </div>
+        {REGIONS.map((r) => {
+          const injured = s.injuredSides[r];
+          return (
+            <div class={`stack region-${r}`} key={r}>
+              <hr class="divider" />
+              <div class="row spread">
+                <span class="row headline" style={{ gap: '0' }}>
+                  <span class="region-dot" aria-hidden="true" />
+                  {REGION_LABEL[r]}
+                </span>
+              </div>
+              <div class="row spread">
+                <span class="callout">Yaralı taraf</span>
+                <div class="segmented" role="group" aria-label={`${REGION_LABEL[r]} yaralı taraf`} style={{ minWidth: '190px' }}>
+                  {(['left', 'right', 'none'] as InjuredSide[]).map((side) => (
+                    <button
+                      key={side}
+                      aria-pressed={injured === side}
+                      onClick={() =>
+                        void updateSettings({
+                          injuredSides: { ...s.injuredSides, [r]: side },
+                          // keep the default side used by exercises and ROM in step with the injured side
+                          defaultSides: side === 'none' ? s.defaultSides : { ...s.defaultSides, [r]: side },
+                        })
+                      }
+                    >
+                      {side === 'left' ? 'Sol' : side === 'right' ? 'Sağ' : 'Yok'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {injured !== 'none' && (
+                <Stepper
+                  label="Hedef simetri"
+                  unit="%"
+                  step={5}
+                  min={50}
+                  max={100}
+                  value={s.symmetryTargets[r]}
+                  onChange={(v) => void updateSettings({ symmetryTargets: { ...s.symmetryTargets, [r]: v } })}
+                />
+              )}
+              {r === 'wrist' && (
+                <>
+                  <div class="row spread">
+                    <span class="callout">Baskın el</span>
+                    <div class="segmented" role="group" aria-label="Baskın el" style={{ minWidth: '150px' }}>
+                      {(['left', 'right'] as Side[]).map((side) => (
+                        <button key={side} aria-pressed={s.dominantHand === side} onClick={() => void updateSettings({ dominantHand: side })}>
+                          {side === 'left' ? 'Sol' : 'Sağ'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p class="small faint" style={{ margin: '0' }}>
+                    Baskın taraf doğal olarak biraz farklı olabilir; simetriyi yorumlarken bunu hesaba kat.
+                  </p>
+                </>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       <h2 class="section-title">Yedekleme</h2>

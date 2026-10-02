@@ -12,6 +12,7 @@ import { RED_FLAG_LABEL, REGION_LABEL, SIDE_LABEL, TIMING_SHORT } from '../logic
 import { LEVEL_TITLE } from '../logic/painRules';
 import { buildReport } from '../logic/report';
 import { MOVEMENTS } from '../logic/rom';
+import { symmetryReportRows, type SymmetryPoint } from '../logic/symmetry';
 
 const TREND = { up: '↑ artıyor', down: '↓ azalıyor', flat: '→ sabit' };
 const fmt = (v: number | null) => (v == null ? '–' : String(v));
@@ -29,6 +30,10 @@ export function Report() {
   if (!sessions || !settings) return null;
 
   const r = buildReport({ sessions, rom, settings, from, to });
+  const symRows = symmetryReportRows(rom, settings, from, to);
+  const symText = (p: SymmetryPoint) =>
+    p.sym.status !== 'ok' ? 'veri yok' : p.sym.mode === 'ratio' ? `%${Math.round(p.sym.percent)}` : p.sym.deficit > 0 ? `${p.sym.deficit}° eksik` : 'tam';
+  const healthyText = (p: SymmetryPoint) => (p.sym.status === 'ok' ? `${p.sym.healthy}°${p.sym.stale ? ' *' : ''}` : '–');
   const pickedXrays = xrays.filter((x) => chosen.includes(x.id));
 
   return (
@@ -82,7 +87,8 @@ export function Report() {
         </div>
 
         <h2>Özet</h2>
-        <table>
+        <div class="table-wrap">
+<table>
           <tbody>
             <tr>
               <th>Seans sayısı</th>
@@ -110,13 +116,15 @@ export function Report() {
             </tr>
           </tbody>
         </table>
+</div>
 
         <h2>Ağrı (0–10)</h2>
         {r.pain.length === 0 ? (
           <p>Bu dönemde seans yok.</p>
         ) : (
           <>
-            <table>
+            <div class="table-wrap">
+<table>
               <thead>
                 <tr>
                   <th>Bölge</th>
@@ -140,6 +148,7 @@ export function Report() {
                 ))}
               </tbody>
             </table>
+</div>
             <div class="legend" style={{ marginTop: '6px' }}>
               <span>
                 <i style={{ background: C.before }} />
@@ -173,7 +182,8 @@ export function Report() {
           <p>Bu dönemde ölçüm yok.</p>
         ) : (
           <>
-            <table>
+            <div class="table-wrap">
+<table>
               <thead>
                 <tr>
                   <th>Hareket</th>
@@ -208,6 +218,7 @@ export function Report() {
                 ))}
               </tbody>
             </table>
+</div>
             <div class="charts" style={{ marginTop: '6px' }}>
               {r.rom
                 .filter((m) => m.n > 1)
@@ -227,11 +238,66 @@ export function Report() {
           </>
         )}
 
+        <h2>Simetri (yaralı / sağlam taraf)</h2>
+        {symRows.length === 0 ? (
+          <p>Bu dönemde yaralı taraf ölçümü yok ya da yaralı taraf ayarlanmamış.</p>
+        ) : (
+          <>
+            <div class="table-wrap">
+<table>
+              <thead>
+                <tr>
+                  <th>Hareket</th>
+                  <th>Zaman</th>
+                  <th>Yaralı / sağlam</th>
+                  <th>Simetri</th>
+                  <th>İlk → son</th>
+                </tr>
+              </thead>
+              <tbody>
+                {symRows.map((row) => (
+                  <tr key={`${row.movement}-${row.timing ?? ''}`}>
+                    <td>
+                      {MOVEMENTS[row.movement].label} ({SIDE_LABEL[row.injuredSide]})
+                    </td>
+                    <td>{row.timing ? TIMING_SHORT[row.timing] : '–'}</td>
+                    <td class="num">
+                      {row.last.angle}° / {healthyText(row.last)}
+                      <div style={{ color: '#666', fontSize: '11px' }}>{formatShortTR(row.last.date)}</div>
+                    </td>
+                    <td class="num">
+                      <strong>{symText(row.last)}</strong>
+                    </td>
+                    <td class="num">
+                      {symText(row.first)} → {symText(row.last)}
+                      {row.diff != null && (
+                        <div>
+                          <strong>
+                            {row.diff > 0 ? '+' : ''}
+                            {row.mode === 'ratio' ? `${Math.round(row.diff)} puan` : `${row.diff}°`}
+                          </strong>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+</div>
+            <p class="disclaimer">
+              Simetri = yaralı taraf / sağlam taraf × 100. Sağlam taraf değeri: son 30 gündeki sağlam taraf ölçümlerinin medyanı; * işaretli değerler 30 günden
+              eskidir. Diz ekstansiyonunda yüzde yerine sağlam tarafa göre eksik derece gösterilir. Hedef: bilek %{settings.symmetryTargets.wrist}, ayak bileği
+              %{settings.symmetryTargets.ankle}, diz %{settings.symmetryTargets.knee}.
+            </p>
+          </>
+        )}
+
         <h2>Kırmızı bayraklar</h2>
         {r.redFlags.length === 0 ? (
           <p>Bu dönemde kırmızı bayrak işaretlenmedi.</p>
         ) : (
-          <table>
+          <div class="table-wrap">
+<table>
             <thead>
               <tr>
                 <th>Tarih</th>
@@ -249,6 +315,7 @@ export function Report() {
               ))}
             </tbody>
           </table>
+</div>
         )}
 
         {pickedXrays.length > 0 && (

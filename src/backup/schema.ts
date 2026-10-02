@@ -4,6 +4,8 @@ export const BACKUP_APP_ID = 'rehab-pwa';
 
 const region = z.enum(['wrist', 'ankle', 'knee']);
 const side = z.enum(['left', 'right']);
+const injured = z.enum(['left', 'right', 'none']);
+const target = z.number().check(z.minimum(1), z.maximum(150));
 const pain = z.number().check(z.minimum(0), z.maximum(10));
 const nonNeg = () => z.number().check(z.minimum(0));
 const opt = <T extends z.core.SomeType>(t: T) => z.optional(t);
@@ -97,6 +99,9 @@ export const settingsSchema = z.object({
   backupReminderDays: z.int().check(z.minimum(1)),
   schemaVersion: z.int(),
   defaultSides: z.object({ wrist: side, ankle: side, knee: side }),
+  injuredSides: z.object({ wrist: injured, ankle: injured, knee: injured }),
+  symmetryTargets: z.object({ wrist: target, ankle: target, knee: target }),
+  dominantHand: side,
 });
 
 /** Media metadata inside a full (ZIP) backup; the binary lives at `file` / `thumb` in the archive. */

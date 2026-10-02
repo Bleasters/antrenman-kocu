@@ -1,6 +1,7 @@
 import { db, SETTINGS_ID } from './db';
 import { newId } from './ids';
 import { defaultSettings } from './seed';
+import { withSettingsDefaults } from './settingsDefaults';
 import type { Exercise, Media, Region, RomMeasurement, RomTiming, Session, Settings } from './types';
 import { REGIONS } from './types';
 import { toISODate } from '../logic/dates';
@@ -8,7 +9,8 @@ import { toISODate } from '../logic/dates';
 // ---------- Settings ----------
 
 export async function getSettings(): Promise<Settings> {
-  return (await db.settings.get(SETTINGS_ID)) ?? defaultSettings(Date.now());
+  const s = await db.settings.get(SETTINGS_ID);
+  return s ? withSettingsDefaults(s) : defaultSettings(Date.now());
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
