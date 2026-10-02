@@ -253,6 +253,9 @@ export function SessionScreen() {
       <div class="session-body">
         <h1>Seans kaydedildi</h1>
         <RuleCard ev={result} />
+        <a class="btn block big" href="#/rom" style={{ marginTop: '12px' }}>
+          ROM ölç (antrenman sonrası)
+        </a>
         <div class="spacer" />
         <button class="btn primary huge block" onClick={() => navigate('/')}>
           Bugün'e dön

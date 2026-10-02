@@ -146,6 +146,8 @@ try {
   });
   await page.goto(`${URL}#/rom`);
   await page.getByRole('heading', { name: 'ROM ölçümü' }).waitFor();
+  // a session just finished, so the default timing is "after training"
+  if ((await page.getByRole('button', { name: 'Antrenman sonrası', exact: true }).getAttribute('aria-pressed')) !== 'true') throw new Error('default timing should be post');
   await page.getByRole('button', { name: 'Sensörü etkinleştir' }).click();
   const tilt = (deg) => page.evaluate((d) => {
     const r = (d * Math.PI) / 180;
@@ -160,12 +162,12 @@ try {
     if (deg !== 40) await page.getByRole('status').filter({ hasText: `${deg}°` }).waitFor();
   }
   // the 3rd trial saves the median automatically and it shows up in the list
-  await page.getByText(/Ayak bileği dorsifleksiyon \(Sağ\): 22° kaydedildi/).waitFor();
+  await page.getByText(/Ayak bileği dorsifleksiyon \(Sağ, sonrası\): 22° kaydedildi/).waitFor();
   await page.locator('.list li').filter({ hasText: '3 ölçümün medyanı: 20°, 22°, 40°' }).waitFor();
   await shot(page, 'rom-sensor');
   // undo removes it, a single trial can be saved early
   await page.getByRole('button', { name: 'Geri al' }).click();
-  await page.getByText('Henüz ölçüm yok.').waitFor();
+  await page.getByText('Henüz antrenman sonrası ölçümü yok.').waitFor();
   await tilt(0);
   await page.getByRole('button', { name: 'Sıfırla' }).click();
   await page.getByText('Sıfırlandı.').waitFor();
@@ -192,7 +194,7 @@ try {
   // add a note to a saved measurement
   await page.getByRole('button', { name: 'Not ekle' }).first().click();
   await page.getByLabel('Not', { exact: true }).fill('sabah, ısınmadan önce');
-  await page.getByRole('button', { name: 'Notu kaydet' }).click();
+  await page.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await page.locator('.list li').filter({ hasText: 'sabah, ısınmadan önce' }).waitFor();
   await page.getByRole('button', { name: 'Notu düzenle' }).first().waitFor();
   await shot(page, 'rom-notes');
@@ -204,12 +206,19 @@ try {
   await page.getByRole('button', { name: 'Sıfırla' }).click();
   await page.getByText(/Sabit tut/).first().waitFor();
   await page.reload();
-  // manual entry
+  // manual entry, before training: kept apart from the "after" list
+  await page.getByRole('button', { name: 'Antrenman öncesi', exact: true }).click();
+  await page.getByText('Henüz antrenman öncesi ölçümü yok.').waitFor();
   await page.getByRole('button', { name: 'Manuel' }).click();
   await page.getByLabel('Açı (°)').fill('12');
   await page.getByLabel('Tarih').fill('2026-09-20');
   await page.getByRole('button', { name: 'Kaydet' }).click();
-  await page.getByText('12° kaydedildi').waitFor();
+  await page.getByText(/\(Sağ, öncesi\): 12° kaydedildi/).waitFor();
+  await page.locator('.list li').filter({ hasText: '12°' }).waitFor();
+  if (await page.locator('.list li').filter({ hasText: 'Tek ölçüm: 22°' }).count()) throw new Error('post measurement shown in pre list');
+  await page.getByRole('button', { name: 'Antrenman sonrası', exact: true }).click();
+  await page.locator('.list li').filter({ hasText: 'Tek ölçüm: 22°' }).waitFor();
+  if (await page.locator('.list li').filter({ hasText: /^12°/ }).count()) throw new Error('pre measurement shown in post list');
   await shot(page, 'rom-manual');
 
   // Archive: upload two images, compare

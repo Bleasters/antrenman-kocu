@@ -11,8 +11,10 @@ import {
   loadSeries,
   painSeries,
   rangeStart,
+  matchesTiming,
   romSeries,
   weeklyCounts,
+  type RomTimingFilter,
   type RegionFilter,
   type TimeRange,
 } from '../logic/stats';
@@ -34,6 +36,7 @@ export function Progress() {
   const [region, setRegion] = useState<RegionFilter>('all');
   const [range, setRange] = useState<TimeRange>('4w');
   const [movementSel, setMovement] = useState<RomMovement | null>(null);
+  const [romTiming, setRomTiming] = useState<RomTimingFilter>('pre');
   const [exerciseSel, setExercise] = useState<string | null>(null);
   const rom = useLive(() => db.rom.toArray(), [], []);
   if (!sessions || !settings) return null;
@@ -46,10 +49,12 @@ export function Progress() {
   const recent = filterSessions(sessions, region, from).reverse().slice(0, 20);
 
   const romMovements = MOVEMENT_LIST.filter(
-    (m) => (region === 'all' || MOVEMENTS[m].region === region) && rom.some((r) => r.movement === m && (!from || r.date >= from)),
+    (m) =>
+      (region === 'all' || MOVEMENTS[m].region === region) &&
+      rom.some((r) => r.movement === m && (!from || r.date >= from) && matchesTiming(r, romTiming)),
   );
   const movement = movementSel && romMovements.includes(movementSel) ? movementSel : romMovements[0];
-  const romS = movement ? romSeries(rom, movement, from) : null;
+  const romS = movement ? romSeries(rom, movement, from, romTiming) : null;
 
   const loadExercises = exercisesWithLoad(sessions, region, from);
   const exId = exerciseSel && loadExercises.some((e) => e.exerciseId === exerciseSel) ? exerciseSel : loadExercises[0]?.exerciseId;
@@ -110,8 +115,21 @@ export function Progress() {
             Ölç
           </a>
         </div>
+        <div class="segmented" role="group" aria-label="Ölçüm zamanı" style={{ marginTop: '10px' }}>
+          {(
+            [
+              ['pre', 'Öncesi'],
+              ['post', 'Sonrası'],
+              ['all', 'Tümü'],
+            ] as [RomTimingFilter, string][]
+          ).map(([t, label]) => (
+            <button key={t} aria-pressed={romTiming === t} onClick={() => setRomTiming(t)}>
+              {label}
+            </button>
+          ))}
+        </div>
         {romMovements.length === 0 ? (
-          <div class="empty">Bu aralıkta ROM ölçümü yok.</div>
+          <div class="empty">Bu aralıkta {romTiming === 'pre' ? 'antrenman öncesi ' : romTiming === 'post' ? 'antrenman sonrası ' : ''}ROM ölçümü yok.</div>
         ) : (
           <>
             <select aria-label="Hareket" value={movement} onChange={(e) => setMovement((e.target as HTMLSelectElement).value as RomMovement)} style={{ margin: '10px 0' }}>

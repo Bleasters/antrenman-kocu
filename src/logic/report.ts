@@ -1,5 +1,5 @@
 /** Data for the printable doctor report (pure). */
-import type { RedFlag, Region, RomMeasurement, RomMovement, Session, Side } from '../db/types';
+import type { RedFlag, Region, RomMeasurement, RomMovement, RomTiming, Session, Side } from '../db/types';
 import { REGIONS } from '../db/types';
 import { evaluateHistory, type RuleLevel, type RuleSettings } from './painRules';
 import { finishedSessions, sessionIncludesRegion, type Trend } from './stats';
@@ -17,6 +17,7 @@ export interface PainRow {
 export interface RomRow {
   movement: RomMovement;
   side: Side;
+  timing?: RomTiming;
   n: number;
   first: { date: string; angle: number };
   last: { date: string; angle: number };
@@ -97,7 +98,7 @@ export function buildReport(input: {
   const romRows: RomRow[] = [];
   const groups = new Map<string, RomMeasurement[]>();
   for (const m of input.rom.filter((m) => inRange(m.date))) {
-    const k = `${m.movement}|${m.side}`;
+    const k = `${m.movement}|${m.side}|${m.timing ?? ''}`;
     groups.set(k, [...(groups.get(k) ?? []), m]);
   }
   for (const list of groups.values()) {
@@ -107,6 +108,7 @@ export function buildReport(input: {
     romRows.push({
       movement: first.movement,
       side: first.side,
+      timing: first.timing,
       n: list.length,
       first: { date: first.date, angle: first.angleDeg },
       last: { date: last.date, angle: last.angleDeg },
@@ -114,7 +116,8 @@ export function buildReport(input: {
       points: list.map((m) => ({ date: m.date, angle: m.angleDeg })),
     });
   }
-  romRows.sort((a, b) => a.movement.localeCompare(b.movement) || a.side.localeCompare(b.side));
+  const tOrder = (t?: RomTiming) => (t === 'pre' ? 0 : t === 'post' ? 1 : 2);
+  romRows.sort((a, b) => a.movement.localeCompare(b.movement) || a.side.localeCompare(b.side) || tOrder(a.timing) - tOrder(b.timing));
 
   return {
     from,

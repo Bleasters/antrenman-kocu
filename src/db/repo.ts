@@ -1,7 +1,7 @@
 import { db, SETTINGS_ID } from './db';
 import { newId } from './ids';
 import { defaultSettings } from './seed';
-import type { Exercise, Media, Region, RomMeasurement, Session, Settings } from './types';
+import type { Exercise, Media, Region, RomMeasurement, RomTiming, Session, Settings } from './types';
 import { REGIONS } from './types';
 import { toISODate } from '../logic/dates';
 
@@ -194,8 +194,8 @@ export async function saveRom(input: RomInput): Promise<string> {
   return rec.id;
 }
 
-export async function updateRomNotes(id: string, notes: string): Promise<void> {
-  await db.rom.update(id, { notes: notes.trim() || undefined, updatedAt: Date.now() });
+export async function updateRomMeta(id: string, patch: { notes: string; timing?: RomTiming }): Promise<void> {
+  await db.rom.update(id, { notes: patch.notes.trim() || undefined, timing: patch.timing, updatedAt: Date.now() });
 }
 
 export async function deleteRom(id: string): Promise<void> {

@@ -6,7 +6,7 @@ import { db } from '../db/db';
 import { useLive } from '../db/live';
 import { useSessions, useSettings } from '../hooks';
 import { addDays, formatLongTR, formatShortTR, todayISO } from '../logic/dates';
-import { RED_FLAG_LABEL, REGION_LABEL, SIDE_LABEL } from '../logic/labels';
+import { RED_FLAG_LABEL, REGION_LABEL, SIDE_LABEL, TIMING_SHORT } from '../logic/labels';
 import { LEVEL_TITLE } from '../logic/painRules';
 import { buildReport } from '../logic/report';
 import { MOVEMENTS } from '../logic/rom';
@@ -178,6 +178,7 @@ export function Report() {
                 <tr>
                   <th>Hareket</th>
                   <th>Taraf</th>
+                  <th>Zaman</th>
                   <th>İlk</th>
                   <th>Son</th>
                   <th>Fark</th>
@@ -186,9 +187,10 @@ export function Report() {
               </thead>
               <tbody>
                 {r.rom.map((m) => (
-                  <tr key={`${m.movement}-${m.side}`}>
+                  <tr key={`${m.movement}-${m.side}-${m.timing ?? ''}`}>
                     <td>{MOVEMENTS[m.movement].label}</td>
                     <td>{SIDE_LABEL[m.side]}</td>
+                    <td>{m.timing ? TIMING_SHORT[m.timing] : '–'}</td>
                     <td class="num">
                       {m.first.angle}° <span style={{ color: '#666' }}>({formatShortTR(m.first.date)})</span>
                     </td>
@@ -210,15 +212,18 @@ export function Report() {
               {r.rom
                 .filter((m) => m.n > 1)
                 .map((m) => (
-                  <figure key={`${m.movement}-${m.side}`}>
+                  <figure key={`${m.movement}-${m.side}-${m.timing ?? ''}`}>
                     <figcaption>
-                      {MOVEMENTS[m.movement].label} ({SIDE_LABEL[m.side]})
+                      {MOVEMENTS[m.movement].label} ({SIDE_LABEL[m.side]}
+                      {m.timing ? `, ${TIMING_SHORT[m.timing].toLocaleLowerCase('tr')}` : ''})
                     </figcaption>
                     <MiniChart labels={m.points.map((x) => formatShortTR(x.date))} unit="°" series={[{ label: 'Açı', color: m.side === 'left' ? C.left : C.right, values: m.points.map((x) => x.angle) }]} />
                   </figure>
                 ))}
             </div>
-            <p class="disclaimer">Telefon eğim ölçeriyle ölçülen değerlerin doğruluğu yaklaşık ±5°'dir.</p>
+            <p class="disclaimer">
+              Telefon eğim ölçeriyle ölçülen değerlerin doğruluğu yaklaşık ±5°'dir. Öncesi/Sonrası: antrenman öncesi ya da sonrası yapılan ölçüm.
+            </p>
           </>
         )}
 

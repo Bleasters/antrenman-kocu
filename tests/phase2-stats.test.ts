@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RomMeasurement, Session, SessionEntry } from '../src/db/types';
 import { buildReport, halfTrend } from '../src/logic/report';
-import { exercisesWithLoad, loadSeries, romDue, romSeries } from '../src/logic/stats';
+import { defaultRomTiming, exercisesWithLoad, loadSeries, romDue, romSeries } from '../src/logic/stats';
 
 let n = 0;
 function s(date: string, entries: SessionEntry[], p: Partial<Session> = {}): Session {
@@ -89,5 +89,34 @@ describe('buildReport', () => {
     expect(halfTrend([5, 5, 1, 1])).toBe('down');
     expect(halfTrend([1, 2, 1, 2])).toBe('flat');
     expect(halfTrend([1, 9, 3])).toBe('up');
+  });
+});
+
+describe('ROM timing (pre/post training)', () => {
+  it('romSeries filters by timing; "all" includes legacy entries', () => {
+    const list = [rom('2026-09-01', 10, { timing: 'pre' }), rom('2026-09-01', 14, { timing: 'post' }), rom('2026-09-02', 11)];
+    expect(romSeries(list, 'ankle_dorsiflexion', undefined, 'pre')).toMatchObject({ dates: ['2026-09-01'], right: [10] });
+    expect(romSeries(list, 'ankle_dorsiflexion', undefined, 'post')).toMatchObject({ dates: ['2026-09-01'], right: [14] });
+    expect(romSeries(list, 'ankle_dorsiflexion', undefined, 'all').dates).toEqual(['2026-09-01', '2026-09-02']);
+  });
+  it('defaultRomTiming is "post" within 3 h after a finished session', () => {
+    const h = 3_600_000;
+    expect(defaultRomTiming([], 10 * h)).toBe('pre');
+    expect(defaultRomTiming([{ endedAt: 8 * h }], 10 * h)).toBe('post');
+    expect(defaultRomTiming([{ endedAt: 6 * h }], 10 * h)).toBe('pre');
+    expect(defaultRomTiming([{ endedAt: undefined }], 10 * h)).toBe('pre');
+  });
+  it('report keeps pre and post as separate rows', () => {
+    const r = buildReport({
+      sessions: [],
+      rom: [rom('2026-09-01', 10, { timing: 'pre' }), rom('2026-09-08', 12, { timing: 'pre' }), rom('2026-09-01', 15, { timing: 'post' }), rom('2026-09-08', 20, { timing: 'post' })],
+      settings: { painIncreaseThreshold: 2, painMaxDuring: 5, nextMorningMustReturn: true },
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    expect(r.rom.map((x) => [x.timing, x.diff])).toEqual([
+      ['pre', 2],
+      ['post', 5],
+    ]);
   });
 });

@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { PlacementDiagram } from '../components/PlacementDiagram';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
-import { deleteRom, saveRom, updateRomNotes } from '../db/repo';
+import { deleteRom, saveRom, updateRomMeta } from '../db/repo';
 import { IconNote, IconTrash } from '../components/Icons';
-import { REGIONS, type Region, type RomMeasurement, type RomMovement, type Side } from '../db/types';
-import { useSettings } from '../hooks';
+import { REGIONS, type Region, type RomMeasurement, type RomMovement, type RomTiming, type Side } from '../db/types';
+import { useSessions, useSettings } from '../hooks';
 import { formatLongTR, todayISO } from '../logic/dates';
-import { REGION_LABEL, SIDE_LABEL } from '../logic/labels';
+import { REGION_LABEL, SIDE_LABEL, TIMING_LABEL, TIMING_SHORT } from '../logic/labels';
+import { defaultRomTiming } from '../logic/stats';
 import { angleBetweenDeg, captureStep, median, MOVEMENTS, movementsFor, roundAngle, WINDOW_MESSAGE, type Vec3 } from '../logic/rom';
 import { beep, countdownBeep, finishBeep, unlockAudio } from '../platform/feedback';
 import { motionSupported, requestMotionPermission, startMotionStream, type MotionPermission, type MotionStream } from '../platform/motion';
@@ -226,11 +227,17 @@ function trialsText(t?: number[]): string | null {
 function RomItem({ m }: { m: RomMeasurement }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(m.notes ?? '');
+  const [timing, setTiming] = useState<RomTiming | undefined>(m.timing);
   const trials = trialsText(m.trials);
   return (
     <li style={{ flexWrap: 'wrap' }}>
       <div class="grow" style={{ minWidth: '0px' }}>
         <strong>{m.angleDeg}°</strong> <span class="muted small">· {formatLongTR(m.date)} · {m.method === 'sensor' ? 'sensör' : 'manuel'}</span>
+        {m.timing && (
+          <span class="tag" style={{ marginLeft: '6px' }}>
+            {TIMING_SHORT[m.timing]}
+          </span>
+        )}
         {trials && <div class="small muted">{trials}</div>}
         {m.notes && !editing && (
           <div class="small">
@@ -246,6 +253,7 @@ function RomItem({ m }: { m: RomMeasurement }) {
             title={m.notes ? 'Notu düzenle' : 'Not ekle'}
             onClick={() => {
               setText(m.notes ?? '');
+              setTiming(m.timing);
               setEditing(true);
             }}
           >
@@ -258,6 +266,13 @@ function RomItem({ m }: { m: RomMeasurement }) {
       )}
       {editing && (
         <div class="stack" style={{ flexBasis: '100%' }}>
+          <div class="segmented" role="group" aria-label="Ölçüm zamanı">
+            {(['pre', 'post'] as RomTiming[]).map((t) => (
+              <button key={t} aria-pressed={timing === t} onClick={() => setTiming(t)}>
+                {TIMING_LABEL[t]}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             aria-label="Not"
@@ -273,11 +288,11 @@ function RomItem({ m }: { m: RomMeasurement }) {
             <button
               class="btn primary"
               onClick={async () => {
-                await updateRomNotes(m.id, text);
+                await updateRomMeta(m.id, { notes: text, timing });
                 setEditing(false);
               }}
             >
-              Notu kaydet
+              Kaydet
             </button>
           </div>
         </div>
@@ -288,6 +303,8 @@ function RomItem({ m }: { m: RomMeasurement }) {
 
 export function Rom() {
   const settings = useSettings();
+  const sessions = useSessions();
+  const [timingOverride, setTiming] = useState<RomTiming | null>(null);
   const [region, setRegion] = useState<Region>('ankle');
   const [movement, setMovement] = useState<RomMovement>('ankle_dorsiflexion');
   const [sideOverride, setSide] = useState<Side | null>(null);
@@ -295,20 +312,37 @@ export function Rom() {
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState<{ text: string; id: string } | null>(null);
   const history = useLive(() => db.rom.where('movement').equals(movement).toArray(), [movement], []);
-  if (!settings) return null;
+  if (!settings || !sessions) return null;
   const side = sideOverride ?? settings.defaultSides[region];
+  const timing = timingOverride ?? defaultRomTiming(sessions, Date.now());
   const info = MOVEMENTS[movement];
-  const recent = history.filter((h) => h.side === side).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt).slice(0, 8);
+  const sorted = history.filter((h) => h.side === side).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  const recent = sorted.filter((h) => h.timing === timing).slice(0, 8);
+  const legacy = sorted.filter((h) => !h.timing).slice(0, 8);
 
   const store = async (angle: number, method: 'sensor' | 'manual', date: string, trials?: number[]) => {
-    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, trials, notes: notes.trim() || undefined });
-    setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}): ${angle}° kaydedildi.` });
+    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, timing, trials, notes: notes.trim() || undefined });
+    setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}, ${TIMING_SHORT[timing].toLocaleLowerCase('tr')}): ${angle}° kaydedildi.` });
     setNotes('');
   };
 
   return (
     <div class="stack">
       <h1>ROM ölçümü</h1>
+      <div class="segmented" role="group" aria-label="Ölçüm zamanı">
+        {(['pre', 'post'] as RomTiming[]).map((t) => (
+          <button
+            key={t}
+            aria-pressed={timing === t}
+            onClick={() => {
+              setTiming(t);
+              setSaved(null);
+            }}
+          >
+            {TIMING_LABEL[t]}
+          </button>
+        ))}
+      </div>
       <div class="segmented" role="group" aria-label="Bölge">
         {REGIONS.map((r) => (
           <button
@@ -400,16 +434,29 @@ export function Rom() {
       </section>
 
       <h2 class="section-title">
-        Son ölçümler · {SIDE_LABEL[side]}
+        Son ölçümler · {SIDE_LABEL[side]} · {TIMING_SHORT[timing]}
       </h2>
       {recent.length === 0 ? (
-        <div class="empty">Henüz ölçüm yok.</div>
+        <div class="empty">Henüz {TIMING_LABEL[timing].toLocaleLowerCase('tr')} ölçümü yok.</div>
       ) : (
         <ul class="list card">
           {recent.map((m) => (
             <RomItem key={m.id} m={m} />
           ))}
         </ul>
+      )}
+      {legacy.length > 0 && (
+        <>
+          <h2 class="section-title">Zamanı belirtilmemiş</h2>
+          <p class="small muted" style={{ marginTop: '0px' }}>
+            Bu ölçümler öncesi/sonrası seçeneği gelmeden önce kaydedildi. Kalemle düzenleyip zamanını seçebilirsin.
+          </p>
+          <ul class="list card">
+            {legacy.map((m) => (
+              <RomItem key={m.id} m={m} />
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
