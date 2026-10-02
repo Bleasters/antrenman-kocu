@@ -79,7 +79,7 @@ export function analyzeWindow(samples: Vec3[], limit = STABILITY_LIMIT): WindowR
 
 export const WINDOW_MESSAGE: Record<'insufficient' | 'unstable' | 'not_gravity', string> = {
   insufficient: 'Sensörden yeterli veri gelmedi. İzni ve cihazı kontrol et ya da manuel gir.',
-  unstable: 'Sabit tut — ölçüm sırasında telefon hareket etti. Tekrar dene.',
+  unstable: 'Telefon birkaç saniye boyunca sabitlenemedi. Uzvu destekleyip tekrar dene.',
   not_gravity: 'Telefon hızlanıyordu; tamamen durunca tekrar dene.',
 };
 
@@ -142,4 +142,39 @@ export const MOVEMENT_LIST = Object.keys(MOVEMENTS) as RomMovement[];
 
 export function movementsFor(region: Region): RomMovement[] {
   return MOVEMENT_LIST.filter((m) => MOVEMENTS[m].region === region);
+}
+
+// ---------- Capture over a continuous sample stream ----------
+
+export interface TimedSample {
+  t: number; // ms
+  v: Vec3;
+}
+
+/** Ignore samples right after the tap: touching the screen jolts the phone. */
+export const SETTLE_MS = 400;
+export const WINDOW_MS = 1000;
+/** How long to keep looking for a steady window before giving up. */
+export const CAPTURE_TIMEOUT_MS = 4000;
+
+export type CaptureStep = { status: 'ok'; vector: Vec3 } | { status: 'wait' } | { status: 'fail'; reason: 'insufficient' | 'unstable' | 'not_gravity' };
+
+/**
+ * One polling step of a capture that started at `start` (tap time). Uses the most recent
+ * WINDOW_MS of samples taken after the settle period; succeeds on the first steady window,
+ * keeps waiting while the user is still settling, and fails only after the timeout.
+ */
+export function captureStep(samples: TimedSample[], start: number, now: number, limit = STABILITY_LIMIT): CaptureStep {
+  const from = start + SETTLE_MS;
+  const kept = samples.filter((s) => s.t >= from && s.t <= now);
+  let last: 'insufficient' | 'unstable' | 'not_gravity' = 'insufficient';
+  if (kept.length) {
+    const end = kept[kept.length - 1].t;
+    if (end - kept[0].t >= WINDOW_MS * 0.9) {
+      const r = analyzeWindow(kept.filter((s) => s.t > end - WINDOW_MS).map((s) => s.v), limit);
+      if (r.ok) return { status: 'ok', vector: r.vector };
+      last = r.reason;
+    }
+  }
+  return now - start >= CAPTURE_TIMEOUT_MS ? { status: 'fail', reason: last } : { status: 'wait' };
 }

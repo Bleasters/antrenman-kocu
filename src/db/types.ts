@@ -96,6 +96,8 @@ export interface RomMeasurement extends BaseRecord {
   movement: RomMovement;
   angleDeg: number;
   method: 'sensor' | 'manual';
+  /** Individual sensor trials the stored (median) angle came from. */
+  trials?: number[];
   notes?: string;
 }
 

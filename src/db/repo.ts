@@ -194,6 +194,10 @@ export async function saveRom(input: RomInput): Promise<string> {
   return rec.id;
 }
 
+export async function updateRomNotes(id: string, notes: string): Promise<void> {
+  await db.rom.update(id, { notes: notes.trim() || undefined, updatedAt: Date.now() });
+}
+
 export async function deleteRom(id: string): Promise<void> {
   await db.rom.delete(id);
 }

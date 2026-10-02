@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analyzeWindow,
+  captureStep,
   angleBetweenDeg,
   maxAxisStdDev,
   median,
@@ -8,6 +9,7 @@ import {
   MOVEMENTS,
   movementsFor,
   roundAngle,
+  type TimedSample,
   type Vec3,
 } from '../src/logic/rom';
 
@@ -91,5 +93,55 @@ describe('movements', () => {
     expect(movementsFor('ankle')).toEqual(['ankle_dorsiflexion', 'ankle_plantarflexion']);
     expect(movementsFor('wrist')).toHaveLength(4);
     for (const m of Object.values(MOVEMENTS)) expect(m.placement.length).toBeGreaterThan(20);
+  });
+});
+
+describe('captureStep (continuous stream)', () => {
+  const G0: Vec3 = [0, 0, 9.81];
+  /** 60 Hz stream from t0 to t1 produced by f(t) */
+  const stream = (t0: number, t1: number, f: (t: number) => Vec3): TimedSample[] => {
+    const out: TimedSample[] = [];
+    for (let t = t0; t <= t1; t += 1000 / 60) out.push({ t, v: f(t) });
+    return out;
+  };
+  const jolt = (t: number): Vec3 => [Math.sin(t) * 3, Math.cos(t) * 3, 9.81 + Math.sin(t * 3) * 2];
+
+  it('ignores the tap jolt during the settle period', () => {
+    const s = stream(0, 1500, (t) => (t < 300 ? jolt(t) : G0));
+    expect(captureStep(s, 0, 1500)).toMatchObject({ status: 'ok' });
+  });
+
+  it('ignores sensor warm-up garbage (zeros) right after the start', () => {
+    const s = stream(0, 1500, (t) => (t < 250 ? [0, 0, 0] : G0));
+    expect(captureStep(s, 0, 1500).status).toBe('ok');
+  });
+
+  it('waits while there is not yet a full window', () => {
+    const s = stream(0, 900, () => G0);
+    expect(captureStep(s, 0, 900)).toEqual({ status: 'wait' });
+  });
+
+  it('keeps waiting through movement and succeeds once the phone is held still', () => {
+    const s = stream(0, 3000, (t) => (t < 1800 ? jolt(t) : G0));
+    expect(captureStep(s, 0, 2000)).toEqual({ status: 'wait' });
+    expect(captureStep(s, 0, 3000).status).toBe('ok');
+  });
+
+  it('fails with "unstable" only after the timeout', () => {
+    const s = stream(0, 4100, jolt);
+    expect(captureStep(s, 0, 3900)).toEqual({ status: 'wait' });
+    expect(captureStep(s, 0, 4100)).toEqual({ status: 'fail', reason: 'unstable' });
+  });
+
+  it('fails with "insufficient" when no samples arrive', () => {
+    expect(captureStep([], 0, 4000)).toEqual({ status: 'fail', reason: 'insufficient' });
+  });
+
+  it('only uses samples from after the tap', () => {
+    const before = stream(-2000, -1, () => [0, 9.81, 0] as Vec3); // a different, steady pose before the tap
+    const after = stream(0, 1500, () => G0);
+    const r = captureStep([...before, ...after], 0, 1500);
+    expect(r.status).toBe('ok');
+    if (r.status === 'ok') expect(angleBetweenDeg(r.vector, G0)).toBeLessThan(0.01);
   });
 });

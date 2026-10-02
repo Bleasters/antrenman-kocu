@@ -83,6 +83,7 @@ export const romSchema = z.object({
   ]),
   angleDeg: z.number(),
   method: z.enum(['sensor', 'manual']),
+  trials: opt(z.array(z.number())),
   notes: opt(z.string()),
 });
 

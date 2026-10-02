@@ -1,15 +1,16 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { PlacementDiagram } from '../components/PlacementDiagram';
 import { db } from '../db/db';
 import { useLive } from '../db/live';
-import { deleteRom, saveRom } from '../db/repo';
-import { REGIONS, type Region, type RomMovement, type Side } from '../db/types';
+import { deleteRom, saveRom, updateRomNotes } from '../db/repo';
+import { IconNote, IconTrash } from '../components/Icons';
+import { REGIONS, type Region, type RomMeasurement, type RomMovement, type Side } from '../db/types';
 import { useSettings } from '../hooks';
 import { formatLongTR, todayISO } from '../logic/dates';
 import { REGION_LABEL, SIDE_LABEL } from '../logic/labels';
-import { analyzeWindow, angleBetweenDeg, median, MOVEMENTS, movementsFor, roundAngle, WINDOW_MESSAGE, type Vec3 } from '../logic/rom';
+import { angleBetweenDeg, captureStep, median, MOVEMENTS, movementsFor, roundAngle, WINDOW_MESSAGE, type Vec3 } from '../logic/rom';
 import { beep, countdownBeep, finishBeep, unlockAudio } from '../platform/feedback';
-import { collectSamples, motionSupported, requestMotionPermission, type MotionPermission } from '../platform/motion';
+import { motionSupported, requestMotionPermission, startMotionStream, type MotionPermission, type MotionStream } from '../platform/motion';
 
 const TRIALS = 3;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -22,6 +23,16 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null);
 
+  const stream = useRef<MotionStream | null>(null);
+  useEffect(() => {
+    if (perm !== 'granted') return;
+    stream.current = startMotionStream();
+    return () => {
+      stream.current?.stop();
+      stream.current = null;
+    };
+  }, [perm]);
+
   const capture = async (): Promise<Vec3 | null> => {
     if (handsFree) {
       for (const n of [2, 1]) {
@@ -31,16 +42,21 @@ function SensorMeasure({ onResult }: { onResult: (angle: number, trials: number[
       }
     }
     setBusy('Sabit tut…');
-    const samples = await collectSamples(1000);
-    setBusy(null);
-    const r = analyzeWindow(samples);
-    if (!r.ok) {
-      beep(220, 300);
-      setMsg({ kind: 'error', text: WINDOW_MESSAGE[r.reason] });
-      return null;
+    // waits out the tap jolt, then takes the first steady 1 s window (up to a few seconds)
+    const start = performance.now();
+    for (;;) {
+      await sleep(100);
+      const step = captureStep(stream.current?.samples() ?? [], start, performance.now());
+      if (step.status === 'wait') continue;
+      setBusy(null);
+      if (step.status === 'fail') {
+        beep(220, 300);
+        setMsg({ kind: 'error', text: WINDOW_MESSAGE[step.reason] });
+        return null;
+      }
+      finishBeep();
+      return step.vector;
     }
-    finishBeep();
-    return r.vector;
   };
 
   if (perm !== 'granted') {
@@ -202,6 +218,74 @@ function ManualMeasure({ onResult }: { onResult: (angle: number, date: string) =
   );
 }
 
+function trialsText(t?: number[]): string | null {
+  if (!t?.length) return null;
+  return t.length > 1 ? `${t.length} ölçümün medyanı: ${t.join('°, ')}°` : `Tek ölçüm: ${t[0]}°`;
+}
+
+function RomItem({ m }: { m: RomMeasurement }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(m.notes ?? '');
+  const trials = trialsText(m.trials);
+  return (
+    <li style={{ flexWrap: 'wrap' }}>
+      <div class="grow" style={{ minWidth: 0 }}>
+        <strong>{m.angleDeg}°</strong> <span class="muted small">· {formatLongTR(m.date)} · {m.method === 'sensor' ? 'sensör' : 'manuel'}</span>
+        {trials && <div class="small muted">{trials}</div>}
+        {m.notes && !editing && (
+          <div class="small">
+            <span class="muted">Not:</span> {m.notes}
+          </div>
+        )}
+      </div>
+      {!editing && (
+        <>
+          <button
+            class="icon-btn"
+            aria-label={m.notes ? 'Notu düzenle' : 'Not ekle'}
+            title={m.notes ? 'Notu düzenle' : 'Not ekle'}
+            onClick={() => {
+              setText(m.notes ?? '');
+              setEditing(true);
+            }}
+          >
+            <IconNote />
+          </button>
+          <button class="icon-btn" aria-label="Ölçümü sil" title="Sil" onClick={() => confirm('Bu ölçüm silinsin mi?') && void deleteRom(m.id)}>
+            <IconTrash />
+          </button>
+        </>
+      )}
+      {editing && (
+        <div class="stack" style={{ flexBasis: '100%' }}>
+          <input
+            type="text"
+            aria-label="Not"
+            value={text}
+            placeholder="ör. sabah, ağrı 3/10, ısınmadan önce"
+            ref={(el) => el?.focus()}
+            onInput={(e) => setText((e.target as HTMLInputElement).value)}
+          />
+          <div class="bottom-actions two">
+            <button class="btn" onClick={() => setEditing(false)}>
+              Vazgeç
+            </button>
+            <button
+              class="btn primary"
+              onClick={async () => {
+                await updateRomNotes(m.id, text);
+                setEditing(false);
+              }}
+            >
+              Notu kaydet
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function Rom() {
   const settings = useSettings();
   const [region, setRegion] = useState<Region>('ankle');
@@ -216,9 +300,8 @@ export function Rom() {
   const info = MOVEMENTS[movement];
   const recent = history.filter((h) => h.side === side).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt).slice(0, 8);
 
-  const store = async (angle: number, method: 'sensor' | 'manual', date: string, extra?: string) => {
-    const note = [extra, notes.trim()].filter(Boolean).join(' · ') || undefined;
-    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, notes: note });
+  const store = async (angle: number, method: 'sensor' | 'manual', date: string, trials?: number[]) => {
+    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, trials, notes: notes.trim() || undefined });
     setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}): ${angle}° kaydedildi.` });
     setNotes('');
   };
@@ -293,7 +376,7 @@ export function Rom() {
 
       <section class="card">
         {mode === 'sensor' ? (
-          <SensorMeasure key={`${movement}-${side}`} onResult={(a, t) => void store(a, 'sensor', todayISO(), `${t.length > 1 ? `${t.length} ölçümün medyanı` : 'Tek ölçüm'}: ${t.join('°, ')}°`)} />
+          <SensorMeasure key={`${movement}-${side}`} onResult={(a, t) => void store(a, 'sensor', todayISO(), t)} />
         ) : (
           <ManualMeasure key={`${movement}-${side}`} onResult={(a, d) => void store(a, 'manual', d)} />
         )}
@@ -324,15 +407,7 @@ export function Rom() {
       ) : (
         <ul class="list card">
           {recent.map((m) => (
-            <li key={m.id}>
-              <div class="grow">
-                <strong>{m.angleDeg}°</strong> <span class="muted small">· {formatLongTR(m.date)} · {m.method === 'sensor' ? 'sensör' : 'manuel'}</span>
-                {m.notes && <div class="small muted">{m.notes}</div>}
-              </div>
-              <button class="icon-btn" aria-label="Ölçümü sil" onClick={() => confirm('Bu ölçüm silinsin mi?') && void deleteRom(m.id)}>
-                🗑
-              </button>
-            </li>
+            <RomItem key={m.id} m={m} />
           ))}
         </ul>
       )}
