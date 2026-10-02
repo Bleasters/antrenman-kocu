@@ -1,11 +1,12 @@
 import type { RehabDB } from '../db/db';
 import { SCHEMA_VERSION, SETTINGS_ID } from '../db/db';
-import type { BaseRecord, Settings } from '../db/types';
+import type { BaseRecord, Media, Settings } from '../db/types';
 import { toISODate } from '../logic/dates';
 import { migrateBackup, BackupVersionError } from './migrations';
 import { BACKUP_APP_ID, backupFileSchema, type BackupData, type BackupFile } from './schema';
 
 export const PRE_REPLACE_SNAPSHOT_KEY = 'preReplaceSnapshot';
+export const PRE_REPLACE_MEDIA_KEY = 'preReplaceMedia';
 
 export async function buildBackup(database: RehabDB, now = Date.now()): Promise<BackupFile> {
   const [exercises, sessions, rom, settings] = await Promise.all([
@@ -47,7 +48,7 @@ export function summarize(file: BackupFile): BackupSummary {
     sessions: file.data.sessions.length,
     rom: file.data.rom.length,
     exercises: file.data.exercises.length,
-    media: 0,
+    media: file.data.media?.length ?? 0,
     exportedAt: file.exportedAt,
     schemaVersion: file.schemaVersion,
   };
@@ -114,33 +115,44 @@ async function mergeTable<T extends BaseRecord>(
  * merge:   records are matched by id; the one with the newer updatedAt wins.
  * replace: the current data is first snapshotted into the meta table (restorable from
  *          Settings), then exercises/sessions/ROM/settings are wiped and replaced.
- *          Media is left untouched because a data-only backup does not contain it.
+ *          Media is replaced only when the backup carries media (full ZIP backup);
+ *          a data-only backup leaves photos/X-rays untouched.
+ * `media` holds the full Media records (with blobs) extracted from a ZIP backup.
  */
 export async function importBackup(
   database: RehabDB,
   file: BackupFile,
   mode: ImportMode,
   now = Date.now(),
+  media: Media[] = [],
 ): Promise<ImportStats> {
   const stats: ImportStats = { added: 0, updated: 0, skipped: 0 };
   const { exercises, sessions, rom, settings } = file.data;
+  const replacesMedia = file.data.media !== undefined;
+  const tables = [database.exercises, database.sessions, database.rom, database.settings, database.media, database.meta];
   if (mode === 'replace') {
     const snapshot = await buildBackup(database, now);
-    await database.transaction('rw', [database.exercises, database.sessions, database.rom, database.settings, database.meta], async () => {
+    const oldMedia = replacesMedia ? await database.media.toArray() : null;
+    await database.transaction('rw', tables, async () => {
       await database.meta.put({ key: PRE_REPLACE_SNAPSHOT_KEY, value: snapshot });
+      if (oldMedia) await database.meta.put({ key: PRE_REPLACE_MEDIA_KEY, value: oldMedia });
+      else await database.meta.delete(PRE_REPLACE_MEDIA_KEY);
       await Promise.all([database.exercises.clear(), database.sessions.clear(), database.rom.clear(), database.settings.clear()]);
+      if (replacesMedia) await database.media.clear();
       await database.exercises.bulkAdd(exercises);
       await database.sessions.bulkAdd(sessions);
       await database.rom.bulkAdd(rom);
+      if (replacesMedia) await database.media.bulkAdd(media);
       if (settings) await database.settings.add({ ...settings, id: SETTINGS_ID, schemaVersion: SCHEMA_VERSION } as Settings);
-      stats.added = exercises.length + sessions.length + rom.length + (settings ? 1 : 0);
+      stats.added = exercises.length + sessions.length + rom.length + (replacesMedia ? media.length : 0) + (settings ? 1 : 0);
     });
     return stats;
   }
-  await database.transaction('rw', [database.exercises, database.sessions, database.rom, database.settings], async () => {
+  await database.transaction('rw', tables, async () => {
     await mergeTable(database.exercises, exercises, stats);
     await mergeTable(database.sessions, sessions, stats);
     await mergeTable(database.rom, rom, stats);
+    await mergeTable(database.media, media, stats);
     if (settings) {
       await mergeTable(database.settings, [{ ...settings, id: SETTINGS_ID, schemaVersion: SCHEMA_VERSION } as Settings], stats);
     }
@@ -148,9 +160,17 @@ export async function importBackup(
   return stats;
 }
 
-export async function getPreReplaceSnapshot(database: RehabDB): Promise<BackupFile | null> {
-  const rec = await database.meta.get(PRE_REPLACE_SNAPSHOT_KEY);
-  return (rec?.value as BackupFile | undefined) ?? null;
+export interface Snapshot {
+  file: BackupFile;
+  /** Present when the replace also wiped media. */
+  media: Media[] | null;
+}
+
+export async function getPreReplaceSnapshot(database: RehabDB): Promise<Snapshot | null> {
+  const [rec, med] = await Promise.all([database.meta.get(PRE_REPLACE_SNAPSHOT_KEY), database.meta.get(PRE_REPLACE_MEDIA_KEY)]);
+  const file = rec?.value as BackupFile | undefined;
+  if (!file) return null;
+  return { file, media: (med?.value as Media[] | undefined) ?? null };
 }
 
 export async function markBackedUp(database: RehabDB, now = Date.now()): Promise<void> {

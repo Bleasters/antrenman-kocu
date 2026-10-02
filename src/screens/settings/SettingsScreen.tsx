@@ -124,6 +124,19 @@ export function SettingsScreen() {
       </section>
 
       <section class="card stack">
+        <h2>Araçlar</h2>
+        <a class="btn block" href="#/rom">
+          ROM ölçümü ›
+        </a>
+        <a class="btn block" href="#/report">
+          Doktor raporu ›
+        </a>
+        <a class="btn block" href="#/settings/shortcuts">
+          iOS Kısayol kurulumu (hatırlatmalar) ›
+        </a>
+      </section>
+
+      <section class="card stack">
         <h2>Ağrı izleme eşikleri</h2>
         <p class="small" style={{ margin: 0 }}>
           <strong>Eşikleri fizyoterapistinle birlikte belirle.</strong> Bu uygulama tıbbi tavsiye vermez.

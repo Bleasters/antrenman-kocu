@@ -8,10 +8,14 @@ import {
   markBackedUp,
   parseBackup,
   serializeBackup,
+  summarize,
   type BackupSummary,
   type ImportMode,
 } from '../../backup/backup';
 import type { BackupFile } from '../../backup/schema';
+import { buildFullBackupZip, parseAnyBackup } from '../../backup/zip';
+import type { Media } from '../../db/types';
+import { formatBytes } from '../../platform/storage';
 import { db } from '../../db/db';
 import { useLive } from '../../db/live';
 import { shareOrDownload } from '../../platform/share';
@@ -30,7 +34,11 @@ function StatusLine({ status }: { status: Status }) {
 
 async function exportFile(file: BackupFile, setStatus: (s: Status) => void, mark: boolean) {
   const blob = new Blob([serializeBackup(file)], { type: 'application/json' });
-  const outcome = await shareOrDownload(blob, backupFileName(file.exportedAt));
+  await exportBlob(blob, backupFileName(file.exportedAt), setStatus, mark);
+}
+
+async function exportBlob(blob: Blob, name: string, setStatus: (s: Status) => void, mark: boolean) {
+  const outcome = await shareOrDownload(blob, name);
   if (outcome === 'cancelled') {
     setStatus({ kind: 'info', text: 'Paylaşım iptal edildi; yedek kaydedilmedi.' });
     return;
@@ -45,7 +53,7 @@ async function exportFile(file: BackupFile, setStatus: (s: Status) => void, mark
 export function BackupScreen() {
   const [status, setStatus] = useState<Status>(null);
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<{ file: BackupFile; summary: BackupSummary } | null>(null);
+  const [pending, setPending] = useState<{ file: BackupFile; summary: BackupSummary; media: Media[] } | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const snapshot = useLive(() => getPreReplaceSnapshot(db), [], null);
 
@@ -53,7 +61,7 @@ export function BackupScreen() {
     if (!pending) return;
     setBusy(true);
     try {
-      const stats = await importBackup(db, pending.file, mode);
+      const stats = await importBackup(db, pending.file, mode, Date.now(), pending.media);
       setStatus({
         kind: 'ok',
         text:
@@ -108,9 +116,28 @@ export function BackupScreen() {
         <p class="small muted" style={{ margin: 0 }}>
           Seanslar, ölçümler, program ve ayarlar. Küçük bir dosya.
         </p>
-        <button class="btn block" disabled>
-          Medya dahil tam yedek (ZIP) — Faz 2
+        <button
+          class="btn big block"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setStatus({ kind: 'info', text: 'Tam yedek hazırlanıyor…' });
+            try {
+              const { blob, file } = await buildFullBackupZip(db);
+              setStatus({ kind: 'info', text: `Tam yedek hazır (${formatBytes(blob.size)}).` });
+              await exportBlob(blob, backupFileName(file.exportedAt, 'zip'), setStatus, true);
+            } catch (e) {
+              setStatus({ kind: 'error', text: `Tam yedek başarısız: ${(e as Error).message}` });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Medya dahil tam yedek (ZIP)
         </button>
+        <p class="small muted" style={{ margin: 0 }}>
+          Röntgen ve fotoğraflar da dahil. Büyük olabilir; ayda bir ya da yeni görsel ekledikten sonra al.
+        </p>
       </section>
 
       <section class="card stack">
@@ -120,19 +147,20 @@ export function BackupScreen() {
           <input
             class="sr-only"
             type="file"
-            accept=".json,application/json"
+            accept=".json,.zip,application/json,application/zip"
             onChange={async (e) => {
               const input = e.target as HTMLInputElement;
               const f = input.files?.[0];
               input.value = '';
               if (!f) return;
-              setStatus(null);
-              const res = parseBackup(await f.text());
+              setStatus({ kind: 'info', text: 'Dosya okunuyor…' });
+              const res = await parseAnyBackup(f);
               if (!res.ok) {
                 setPending(null);
                 setStatus({ kind: 'error', text: res.error });
               } else {
-                setPending({ file: res.file, summary: res.summary });
+                setStatus(null);
+                setPending({ file: res.file, summary: res.summary, media: res.media });
               }
             }}
           />
@@ -144,7 +172,9 @@ export function BackupScreen() {
             <div>
               {pending.summary.sessions} seans, {pending.summary.rom} ölçüm, {pending.summary.media} görsel, {pending.summary.exercises} egzersiz içeriyor.
             </div>
-            <div class="small muted">Yedek tarihi: {new Date(pending.summary.exportedAt).toLocaleString('tr-TR')}</div>
+            <div class="small muted">
+              Yedek tarihi: {new Date(pending.summary.exportedAt).toLocaleString('tr-TR')} · {pending.file.kind === 'full' ? 'tam yedek (medya dahil)' : 'sadece veriler'}
+            </div>
             <button class="btn primary big block" disabled={busy} onClick={() => void doImport('merge')}>
               Birleştir
             </button>
@@ -166,17 +196,22 @@ export function BackupScreen() {
         <section class="card stack">
           <h2>Otomatik yedek</h2>
           <p class="small muted" style={{ margin: 0 }}>
-            Son "Değiştir" işleminden önceki veriler ({new Date(snapshot.exportedAt).toLocaleString('tr-TR')}): {snapshot.data.sessions.length} seans.
+            Son "Değiştir" işleminden önceki veriler ({new Date(snapshot.file.exportedAt).toLocaleString('tr-TR')}): {snapshot.file.data.sessions.length} seans
+            {snapshot.media ? `, ${snapshot.media.length} görsel` : ''}.
           </p>
-          <button class="btn block" onClick={() => void exportFile(snapshot, setStatus, false)}>
-            Bu yedeği dışa aktar
+          <button class="btn block" onClick={() => void exportFile(snapshot.file, setStatus, false)}>
+            Bu yedeği dışa aktar (veriler)
           </button>
           <button
             class="btn block"
             onClick={() => {
-              const res = parseBackup(JSON.stringify(snapshot));
-              if (res.ok) setPending({ file: res.file, summary: res.summary });
-              else setStatus({ kind: 'error', text: res.error });
+              const res = parseBackup(JSON.stringify(snapshot.file));
+              if (!res.ok) return setStatus({ kind: 'error', text: res.error });
+              // re-attach the media that the replace removed, so restoring brings them back
+              const file: BackupFile = snapshot.media
+                ? { ...res.file, kind: 'full', data: { ...res.file.data, media: snapshot.media.map((m) => ({ id: m.id, createdAt: m.createdAt, updatedAt: m.updatedAt, date: m.date, region: m.region, kind: m.kind, note: m.note, file: '', type: m.blob.type })) } }
+                : res.file;
+              setPending({ file, summary: summarize(file), media: snapshot.media ?? [] });
             }}
           >
             Bu yedeği geri yükle…

@@ -97,11 +97,25 @@ export const settingsSchema = z.object({
   defaultSides: z.object({ wrist: side, ankle: side, knee: side }),
 });
 
+/** Media metadata inside a full (ZIP) backup; the binary lives at `file` / `thumb` in the archive. */
+export const mediaMetaSchema = z.object({
+  ...base,
+  date,
+  region: opt(region),
+  kind: z.enum(['xray', 'photo', 'exercise_video']),
+  note: opt(z.string()),
+  file: z.string(),
+  type: z.string(),
+  thumb: opt(z.string()),
+  thumbType: opt(z.string()),
+});
+
 export const backupDataSchema = z.object({
   exercises: z.array(exerciseSchema),
   sessions: z.array(sessionSchema),
   rom: z.array(romSchema),
   settings: z.nullable(settingsSchema),
+  media: opt(z.array(mediaMetaSchema)),
 });
 
 export const backupFileSchema = z.object({
@@ -112,5 +126,6 @@ export const backupFileSchema = z.object({
   data: backupDataSchema,
 });
 
+export type MediaMeta = z.infer<typeof mediaMetaSchema>;
 export type BackupData = z.infer<typeof backupDataSchema>;
 export type BackupFile = z.infer<typeof backupFileSchema>;

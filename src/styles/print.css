@@ -1,0 +1,117 @@
+/* Doctor report: A4 print layout. Screen view mimics the paper. */
+.report {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.report h1 {
+  font-size: 1.35rem;
+}
+.report h2 {
+  font-size: 1rem;
+  margin: 16px 0 6px;
+  border-bottom: 1px solid #999;
+  padding-bottom: 2px;
+}
+.report table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.report th,
+.report td {
+  border: 1px solid #bbb;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+.report th {
+  background: #f0f0f0;
+}
+.report td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.report .charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.report figure {
+  margin: 0;
+  break-inside: avoid;
+}
+.report figcaption {
+  font-size: 11px;
+  font-weight: 700;
+}
+.report .xrays {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.report .xrays img {
+  width: 100%;
+  max-height: 110mm;
+  object-fit: contain;
+  background: #000;
+}
+.report .disclaimer {
+  font-size: 10px;
+  color: #444;
+  margin-top: 14px;
+}
+.report .legend span {
+  margin-right: 10px;
+  font-size: 11px;
+}
+.report .legend i {
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    font-size: 11pt;
+  }
+  body,
+  .app {
+    min-height: 0 !important;
+  }
+  .app {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .no-print,
+  .tabbar,
+  .banner,
+  .modal-backdrop {
+    display: none !important;
+  }
+  .report {
+    padding: 0;
+    border-radius: 0;
+  }
+  .report h2 {
+    break-after: avoid;
+  }
+  .report tr,
+  .report .xrays > figure {
+    break-inside: avoid;
+  }
+}
