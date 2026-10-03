@@ -231,11 +231,20 @@ try {
   await page.getByRole('button', { name: 'Sağlam tarafı ölç' }).click();
   if ((await page.getByRole('button', { name: 'Sol', exact: true }).getAttribute('aria-pressed')) !== 'true') throw new Error('healthy side not selected');
   await page.getByText(/Sağlam taraf ölçülüyor/).waitFor();
+  // the healthy side has no pre/post split
+  if (await page.getByRole('group', { name: 'Ölçüm zamanı' }).count()) throw new Error('timing shown for the healthy side');
   await page.getByLabel('Açı (°)').fill('15');
   await page.getByLabel('Tarih').fill('2026-09-20');
   await page.getByRole('button', { name: 'Kaydet' }).click();
-  await page.getByText(/\(Sol, öncesi\): 15° kaydedildi/).waitFor();
+  await page.getByText(/\(Sol, sağlam taraf\): 15° kaydedildi/).waitFor();
   if (await page.getByText('Sağlam tarafı da ölçmek ister misin?').count()) throw new Error('prompt shown after measuring the healthy side');
+  // measured once: an injured "after training" measurement must not ask for the healthy side again
+  await page.getByRole('button', { name: 'Sağ', exact: true }).click();
+  await page.getByRole('button', { name: 'Antrenman sonrası', exact: true }).click();
+  await page.getByLabel('Açı (°)').fill('13');
+  await page.getByRole('button', { name: 'Kaydet' }).click();
+  await page.getByText(/\(Sağ, sonrası\): 13° kaydedildi/).waitFor();
+  if (await page.getByText('Sağlam tarafı da ölçmek ister misin?').count()) throw new Error('healthy side asked again for post-training');
 
   // Symmetry card on Progress (pre-training): 12° / 15° → %80
   await page.goto(`${URL}#/progress`);

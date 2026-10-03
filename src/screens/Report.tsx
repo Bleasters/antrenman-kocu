@@ -33,7 +33,7 @@ export function Report() {
   const symRows = symmetryReportRows(rom, settings, from, to);
   const symText = (p: SymmetryPoint) =>
     p.sym.status !== 'ok' ? 'veri yok' : p.sym.mode === 'ratio' ? `%${Math.round(p.sym.percent)}` : p.sym.deficit > 0 ? `${p.sym.deficit}° eksik` : 'tam';
-  const healthyText = (p: SymmetryPoint) => (p.sym.status === 'ok' ? `${p.sym.healthy}°${p.sym.stale ? ' *' : ''}` : '–');
+  const healthyText = (p: SymmetryPoint) => (p.sym.status === 'ok' ? `${p.sym.healthy}°` : '–');
   const pickedXrays = xrays.filter((x) => chosen.includes(x.id));
 
   return (
@@ -285,8 +285,7 @@ export function Report() {
             </table>
 </div>
             <p class="disclaimer">
-              Simetri = yaralı taraf / sağlam taraf × 100. Sağlam taraf değeri: son 30 gündeki sağlam taraf ölçümlerinin medyanı; * işaretli değerler 30 günden
-              eskidir. Diz ekstansiyonunda yüzde yerine sağlam tarafa göre eksik derece gösterilir. Hedef: bilek %{settings.symmetryTargets.wrist}, ayak bileği
+              Simetri = yaralı taraf / sağlam taraf × 100. Sağlam taraf değeri: sağlam tarafın en son ölçümü; bir kez ölçülür ve tüm ölçümlerde kullanılır. Diz ekstansiyonunda yüzde yerine sağlam tarafa göre eksik derece gösterilir. Hedef: bilek %{settings.symmetryTargets.wrist}, ayak bileği
               %{settings.symmetryTargets.ankle}, diz %{settings.symmetryTargets.knee}.
             </p>
           </>
