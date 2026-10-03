@@ -5,13 +5,13 @@
  * - deficit movements: target is "full" range (e.g. knee extension), where a ratio is not
  *   meaningful; shown as degrees missing = healthy − injured (healthy side = full extension).
  *
- * The healthy-side reference is the median of healthy-side measurements of the last 30 days
- * (it rarely changes, so it need not be measured every time). If the newest one is older,
- * the latest value is still used but marked stale ("re-measure the healthy side").
+ * The healthy side is measured once: its latest measurement (median of that day) is the
+ * reference for every injured-side measurement, past and future, regardless of date or
+ * pre/post-training timing. Measuring it again simply replaces the reference.
  */
 import type { InjuredSide, Region, RomMeasurement, RomMovement, RomTiming, Side } from '../db/types';
 import { REGIONS } from '../db/types';
-import { addDays, daysBetween } from './dates';
+import { addDays } from './dates';
 import { median, movementsFor } from './rom';
 
 export type SymmetryMode = 'ratio' | 'deficit';
@@ -37,7 +37,6 @@ export const PRIMARY_MOVEMENT: Record<Region, RomMovement> = {
   knee: 'knee_flexion',
 };
 
-export const HEALTHY_WINDOW_DAYS = 30;
 export const CHANGE_WINDOW_DAYS = 28;
 
 export const otherSide = (s: Side): Side => (s === 'left' ? 'right' : 'left');
@@ -46,28 +45,25 @@ const r1 = (n: number) => Math.round(n * 10) / 10;
 
 export interface HealthyRef {
   value: number;
-  /** newest healthy-side measurement is older than HEALTHY_WINDOW_DAYS */
-  stale: boolean;
   lastDate: string;
   count: number;
 }
 
-/** Healthy-side reference as of `asOf` (only measurements on or before that date). */
-export function healthyReference(rom: RomMeasurement[], movement: RomMovement, healthySide: Side, asOf: string): HealthyRef | null {
-  const list = rom.filter((m) => m.movement === movement && m.side === healthySide && m.date <= asOf);
+/**
+ * The healthy-side reference: the latest healthy-side measurement day (median if several
+ * on that day). Date and pre/post timing do not matter — it applies everywhere.
+ */
+export function healthyReference(rom: RomMeasurement[], movement: RomMovement, healthySide: Side): HealthyRef | null {
+  const list = rom.filter((m) => m.movement === movement && m.side === healthySide);
   if (list.length === 0) return null;
   const lastDate = list.reduce((d, m) => (m.date > d ? m.date : d), list[0].date);
-  const recent = list.filter((m) => daysBetween(m.date, asOf) <= HEALTHY_WINDOW_DAYS);
-  if (recent.length > 0) {
-    return { value: r1(median(recent.map((m) => m.angleDeg))), stale: false, lastDate, count: recent.length };
-  }
   const lastDay = list.filter((m) => m.date === lastDate);
-  return { value: r1(median(lastDay.map((m) => m.angleDeg))), stale: true, lastDate, count: lastDay.length };
+  return { value: r1(median(lastDay.map((m) => m.angleDeg))), lastDate, count: lastDay.length };
 }
 
 export type Symmetry =
-  | { status: 'ok'; mode: 'ratio'; injured: number; healthy: number; percent: number; stale: boolean; healthyDate: string }
-  | { status: 'ok'; mode: 'deficit'; injured: number; healthy: number; deficit: number; stale: boolean; healthyDate: string }
+  | { status: 'ok'; mode: 'ratio'; injured: number; healthy: number; percent: number; healthyDate: string }
+  | { status: 'ok'; mode: 'deficit'; injured: number; healthy: number; deficit: number; healthyDate: string }
   | { status: 'no_healthy'; injured: number }
   | { status: 'no_injured' };
 
@@ -78,10 +74,10 @@ export type Symmetry =
 export function computeSymmetry(injured: number, ref: HealthyRef | null, mode: SymmetryMode): Symmetry {
   if (!ref) return { status: 'no_healthy', injured };
   if (mode === 'deficit') {
-    return { status: 'ok', mode, injured, healthy: ref.value, deficit: r1(Math.max(0, ref.value - injured)), stale: ref.stale, healthyDate: ref.lastDate };
+    return { status: 'ok', mode, injured, healthy: ref.value, deficit: r1(Math.max(0, ref.value - injured)), healthyDate: ref.lastDate };
   }
   if (!(ref.value > 0)) return { status: 'no_healthy', injured };
-  return { status: 'ok', mode, injured, healthy: ref.value, percent: r1((injured / ref.value) * 100), stale: ref.stale, healthyDate: ref.lastDate };
+  return { status: 'ok', mode, injured, healthy: ref.value, percent: r1((injured / ref.value) * 100), healthyDate: ref.lastDate };
 }
 
 const timingMatches = (m: RomMeasurement, t: SymmetryTiming) => t === 'all' || (t === 'unspecified' ? !m.timing : m.timing === t);
@@ -103,7 +99,7 @@ export function injuredSeries(
   to?: string,
 ): SymmetryPoint[] {
   const mode = SYMMETRY_CONFIG[movement].mode;
-  const healthySide = otherSide(injuredSide);
+  const ref = healthyReference(rom, movement, otherSide(injuredSide));
   const list = rom
     .filter((m) => m.movement === movement && m.side === injuredSide && timingMatches(m, timing) && (!from || m.date >= from) && (!to || m.date <= to))
     .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
@@ -113,7 +109,7 @@ export function injuredSeries(
     date: m.date,
     angle: m.angleDeg,
     timing: m.timing,
-    sym: computeSymmetry(m.angleDeg, healthyReference(rom, movement, healthySide, m.date), mode),
+    sym: computeSymmetry(m.angleDeg, ref, mode),
   }));
 }
 
@@ -129,7 +125,7 @@ export interface MovementSymmetry {
   change: number | null;
   baselineDate?: string;
   series: SymmetryPoint[];
-  /** reference as of today (drives the "re-measure the healthy side" hint) */
+  /** the healthy-side reference used for every point */
   healthyNow: HealthyRef | null;
 }
 
@@ -176,14 +172,13 @@ export function movementSymmetry(
     change,
     baselineDate,
     series,
-    healthyNow: healthyReference(rom, movement, healthySide, today),
+    healthyNow: healthyReference(rom, movement, healthySide),
   };
 }
 
-/** True when the healthy side has no reference yet, or it is older than 30 days. */
-export function needsHealthyMeasurement(rom: RomMeasurement[], movement: RomMovement, injuredSide: Side, today: string): boolean {
-  const ref = healthyReference(rom, movement, otherSide(injuredSide), today);
-  return !ref || ref.stale;
+/** True only when the healthy side of this movement has never been measured. */
+export function needsHealthyMeasurement(rom: RomMeasurement[], movement: RomMovement, injuredSide: Side): boolean {
+  return healthyReference(rom, movement, otherSide(injuredSide)) === null;
 }
 
 export interface RegionSymmetry {

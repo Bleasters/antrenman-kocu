@@ -35,7 +35,7 @@ describe('config', () => {
 });
 
 describe('computeSymmetry', () => {
-  const ref = (value: number, stale = false) => ({ value, stale, lastDate: '2026-10-01', count: 1 });
+  const ref = (value: number) => ({ value, lastDate: '2026-10-01', count: 1 });
   it('normal ratio: injured / healthy × 100', () => {
     expect(computeSymmetry(48, ref(66), 'ratio')).toMatchObject({ status: 'ok', mode: 'ratio', percent: 72.7, injured: 48, healthy: 66 });
   });
@@ -55,38 +55,34 @@ describe('computeSymmetry', () => {
     expect(computeSymmetry(5, ref(0), 'deficit')).toMatchObject({ status: 'ok', deficit: 0 }); // 0 healthy is fine here
     expect(computeSymmetry(5, null, 'deficit')).toEqual({ status: 'no_healthy', injured: 5 });
   });
-  it('carries the stale flag', () => {
-    expect(computeSymmetry(48, ref(66, true), 'ratio')).toMatchObject({ stale: true });
-  });
 });
 
-describe('healthyReference', () => {
+describe('healthyReference (measured once, used everywhere)', () => {
   const list = [
-    m({ date: '2026-09-20', side: 'right', angleDeg: 60 }),
-    m({ date: '2026-09-25', side: 'right', angleDeg: 70 }),
-    m({ date: '2026-09-28', side: 'right', angleDeg: 64 }),
+    m({ date: '2026-07-01', side: 'right', angleDeg: 60, timing: 'pre' }),
+    m({ date: '2026-09-25', side: 'right', angleDeg: 70, timing: 'post' }),
+    m({ date: '2026-09-25', side: 'right', angleDeg: 64 }),
     m({ date: '2026-09-29', side: 'left', angleDeg: 40 }),
     m({ date: '2026-09-29', side: 'right', angleDeg: 99, movement: 'wrist_flexion' }),
   ];
-  it('is the median of the healthy side over the last 30 days', () => {
-    expect(healthyReference(list, 'wrist_extension', 'right', TODAY)).toEqual({ value: 64, stale: false, lastDate: '2026-09-28', count: 3 });
+  it('is the latest healthy measurement day (median of that day), regardless of timing', () => {
+    expect(healthyReference(list, 'wrist_extension', 'right')).toEqual({ value: 67, lastDate: '2026-09-25', count: 2 });
   });
-  it('only uses measurements on or before asOf', () => {
-    expect(healthyReference(list, 'wrist_extension', 'right', '2026-09-24')).toMatchObject({ value: 60, count: 1 });
-    expect(healthyReference(list, 'wrist_extension', 'right', '2026-09-19')).toBeNull();
+  it('a single old measurement is still the reference — no expiry', () => {
+    expect(healthyReference([m({ date: '2025-01-01', side: 'right', angleDeg: 66, timing: 'post' })], 'wrist_extension', 'right')).toEqual({
+      value: 66,
+      lastDate: '2025-01-01',
+      count: 1,
+    });
   });
-  it('exactly 30 days old still counts; 31 days is stale', () => {
-    const one = [m({ date: '2026-09-02', side: 'right', angleDeg: 66 })];
-    expect(healthyReference(one, 'wrist_extension', 'right', TODAY)).toMatchObject({ stale: false }); // 30 days
-    expect(healthyReference(one, 'wrist_extension', 'right', '2026-10-03')).toMatchObject({ stale: true, value: 66 }); // 31 days
+  it('measuring again replaces the reference', () => {
+    const again = [...list, m({ date: '2026-10-01', side: 'right', angleDeg: 72 })];
+    expect(healthyReference(again, 'wrist_extension', 'right')).toMatchObject({ value: 72, lastDate: '2026-10-01' });
   });
-  it('stale reference uses the latest measured day', () => {
-    const old = [m({ date: '2026-07-01', side: 'right', angleDeg: 50 }), m({ date: '2026-08-01', side: 'right', angleDeg: 60 }), m({ date: '2026-08-01', side: 'right', angleDeg: 62 })];
-    expect(healthyReference(old, 'wrist_extension', 'right', TODAY)).toEqual({ value: 61, stale: true, lastDate: '2026-08-01', count: 2 });
-  });
-  it('is null without healthy-side data', () => {
-    expect(healthyReference(list, 'wrist_extension', 'left', TODAY)).toMatchObject({ value: 40 });
-    expect(healthyReference([], 'wrist_extension', 'right', TODAY)).toBeNull();
+  it('is per movement and side; null without healthy-side data', () => {
+    expect(healthyReference(list, 'wrist_extension', 'left')).toMatchObject({ value: 40 });
+    expect(healthyReference(list, 'wrist_flexion', 'right')).toMatchObject({ value: 99 });
+    expect(healthyReference([], 'wrist_extension', 'right')).toBeNull();
   });
 });
 
@@ -99,14 +95,18 @@ describe('injuredSeries / movementSymmetry', () => {
     m({ date: '2026-09-30', side: 'left', angleDeg: 50, timing: 'pre' }),
     m({ date: '2026-09-30', side: 'left', angleDeg: 54, timing: 'post' }),
   ];
-  it('uses the reference that applied on each measurement date', () => {
+  it('applies the single healthy reference to every injured point', () => {
     const s = injuredSeries(list, 'wrist_extension', 'left');
     expect(s.map((p) => [p.date, p.angle])).toEqual([
       ['2026-09-01', 33],
       ['2026-09-04', 40],
       ['2026-09-30', 54], // latest of the day
     ]);
-    expect(s[0].sym).toMatchObject({ percent: 50 });
+    expect(s[0].sym).toMatchObject({ percent: 50, healthy: 66 });
+  });
+  it('a healthy measurement taken later also applies to earlier injured points', () => {
+    const later = [m({ date: '2026-09-01', side: 'left', angleDeg: 30 }), m({ date: '2026-09-30', side: 'right', angleDeg: 60 })];
+    expect(injuredSeries(later, 'wrist_extension', 'left')[0].sym).toMatchObject({ status: 'ok', percent: 50 });
   });
   it('filters by timing', () => {
     expect(injuredSeries(list, 'wrist_extension', 'left', 'pre').map((p) => p.angle)).toEqual([33, 40, 50]);
@@ -119,7 +119,7 @@ describe('injuredSeries / movementSymmetry', () => {
     // baseline = latest point on/before today−28 (2026-09-04): 40/66 = 60.6%
     expect(ms.baselineDate).toBe('2026-09-04');
     expect(ms.change).toBe(15.2);
-    expect(ms.healthyNow).toMatchObject({ value: 66, stale: false });
+    expect(ms.healthyNow).toMatchObject({ value: 66 });
   });
   it('falls back to the first point inside the window, and is null with a single point', () => {
     const inWindow = [m({ date: '2026-09-20', side: 'right', angleDeg: 60 }), m({ date: '2026-09-21', side: 'left', angleDeg: 30 }), m({ date: '2026-09-30', side: 'left', angleDeg: 45 })];
@@ -136,13 +136,14 @@ describe('injuredSeries / movementSymmetry', () => {
       m({ date: '2026-09-30', side: 'left', angleDeg: 84, movement: 'knee_extension', region: 'knee' }),
     ];
     const ms = movementSymmetry(knee, 'knee_extension', 'left', TODAY);
-    expect(ms.current).toMatchObject({ mode: 'deficit', deficit: 6, stale: true });
+    expect(ms.current).toMatchObject({ mode: 'deficit', deficit: 6 });
     expect(ms.change).toBe(-14);
   });
-  it('needsHealthyMeasurement when missing or stale', () => {
-    expect(needsHealthyMeasurement(list, 'wrist_extension', 'left', TODAY)).toBe(false);
-    expect(needsHealthyMeasurement(list, 'wrist_extension', 'left', '2026-11-01')).toBe(true);
-    expect(needsHealthyMeasurement(list, 'wrist_flexion', 'left', TODAY)).toBe(true);
+  it('needsHealthyMeasurement only when the healthy side was never measured', () => {
+    expect(needsHealthyMeasurement(list, 'wrist_extension', 'left')).toBe(false);
+    expect(needsHealthyMeasurement(list, 'wrist_flexion', 'left')).toBe(true);
+    // no expiry: a year-old healthy measurement is still enough
+    expect(needsHealthyMeasurement([m({ date: '2025-10-01', side: 'right', angleDeg: 60 })], 'wrist_extension', 'left')).toBe(false);
   });
 });
 

@@ -1,5 +1,4 @@
 import type { Side } from '../db/types';
-import { formatLongTR } from '../logic/dates';
 import { REGION_LABEL, SIDE_LABEL, TIMING_SHORT } from '../logic/labels';
 import { MOVEMENTS } from '../logic/rom';
 import type { MovementSymmetry, RegionSymmetry } from '../logic/symmetry';
@@ -46,7 +45,8 @@ export function SymmetryCard({ rs, dominantHand }: { rs: RegionSymmetry; dominan
   const h = rs.headline;
   const headPct = h && h.current.status === 'ok' && h.current.mode === 'ratio' ? h.current.percent : null;
   const healthySide: Side = rs.injuredSide === 'left' ? 'right' : 'left';
-  const stale = rs.movements.filter((m) => m.healthyNow?.stale || (m.current.status !== 'no_injured' && !m.healthyNow));
+  // injured side measured but the healthy side never: ask for it once
+  const missing = rs.movements.filter((m) => m.current.status !== 'no_injured' && !m.healthyNow);
   return (
     <section class={`card region-${rs.region}`} aria-label={`${REGION_LABEL[rs.region]} simetri`}>
       <div class="row spread" style={{ alignItems: 'flex-start', gap: 'var(--s-3)' }}>
@@ -102,15 +102,11 @@ export function SymmetryCard({ rs, dominantHand }: { rs: RegionSymmetry; dominan
         </ul>
       )}
 
-      {stale.length > 0 && (
+      {missing.length > 0 && (
         <div class="row small" style={{ gap: 'var(--s-2)', alignItems: 'flex-start', marginTop: 'var(--s-3)', color: 'var(--warn)' }}>
           <IconWarn aria-hidden="true" size={16} style={{ flex: 'none', marginTop: '2px' }} />
           <span>
-            Sağlam tarafı yeniden ölç:{' '}
-            {stale
-              .map((m) => `${MOVEMENTS[m.movement].label}${m.healthyNow ? ` (son ${formatLongTR(m.healthyNow.lastDate)})` : ' (hiç ölçülmedi)'}`)
-              .join(', ')}
-            .
+            Sağlam tarafı bir kez ölç: {missing.map((m) => MOVEMENTS[m.movement].label).join(', ')}.
           </span>
         </div>
       )}

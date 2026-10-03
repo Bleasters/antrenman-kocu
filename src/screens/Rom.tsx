@@ -330,21 +330,26 @@ export function Rom() {
   const side = sideOverride ?? (injured !== 'none' ? injured : settings.defaultSides[region]);
   const timing = timingOverride ?? defaultRomTiming(sessions, Date.now());
   const info = MOVEMENTS[movement];
+  // the healthy side is measured once and used everywhere: no pre/post split for it
+  const isHealthy = healthy !== null && side === healthy;
+  const healthyRef = healthy ? healthyReference(history, movement, healthy) : null;
   const sorted = history.filter((h) => h.side === side).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  const recent = sorted.filter((h) => h.timing === timing).slice(0, 8);
-  const legacy = sorted.filter((h) => !h.timing).slice(0, 8);
+  const recent = isHealthy ? sorted.slice(0, 8) : sorted.filter((h) => h.timing === timing).slice(0, 8);
+  const legacy = isHealthy ? [] : sorted.filter((h) => !h.timing).slice(0, 8);
 
   const store = async (angle: number, method: 'sensor' | 'manual', date: string, trials?: number[]) => {
-    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, timing, trials, notes: notes.trim() || undefined });
-    setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}, ${TIMING_SHORT[timing].toLocaleLowerCase('tr')}): ${angle}° kaydedildi.` });
-    // after the injured side, offer the healthy side when its reference is missing or older than 30 days
-    setAskHealthy(injured !== 'none' && side === injured && needsHealthyMeasurement(history, movement, injured, todayISO()));
+    const id = await saveRom({ date, region, side, movement, angleDeg: angle, method, timing: isHealthy ? undefined : timing, trials, notes: notes.trim() || undefined });
+    const tag = isHealthy ? 'sağlam taraf' : TIMING_SHORT[timing].toLocaleLowerCase('tr');
+    setSaved({ id, text: `${info.label} (${SIDE_LABEL[side]}, ${tag}): ${angle}° kaydedildi.` });
+    // after the injured side, offer the healthy side only if it has never been measured
+    setAskHealthy(injured !== 'none' && side === injured && needsHealthyMeasurement(history, movement, injured));
     setNotes('');
   };
 
   return (
     <div class="stack">
       <PageHeader title="ROM ölçümü" />
+      {!isHealthy && (
       <div class="segmented" role="group" aria-label="Ölçüm zamanı">
         {(['pre', 'post'] as RomTiming[]).map((t) => (
           <button
@@ -359,6 +364,7 @@ export function Rom() {
           </button>
         ))}
       </div>
+      )}
       <div class="segmented" role="group" aria-label="Bölge">
         {REGIONS.map((r) => (
           <button
@@ -415,6 +421,13 @@ export function Rom() {
           <p class="small muted" style={{ margin: '0' }}>
             {side === injured ? 'Yaralı taraf' : 'Sağlam taraf'} ölçülüyor (yaralı: {SIDE_LABEL[injured as Side].toLocaleLowerCase('tr')}, sağlam:{' '}
             {SIDE_LABEL[healthy].toLocaleLowerCase('tr')}). İki tarafı da aynı pozisyon ve telefon yerleşimiyle ölç.
+            {isHealthy && (
+              <>
+                {' '}
+                Sağlam taraf bir kez ölçülür; antrenman öncesi/sonrası ayrımı yoktur ve değeri tüm ölçümlerde kullanılır.
+                {healthyRef ? ` Kayıtlı değer: ${healthyRef.value}° (${formatLongTR(healthyRef.lastDate)}); yeniden ölçersen yenisi kullanılır.` : ''}
+              </>
+            )}
           </p>
         </div>
       )}
@@ -477,11 +490,7 @@ export function Rom() {
               <div class="grow">
                 <div class="headline">Sağlam tarafı da ölçmek ister misin?</div>
                 <div class="small muted">
-                  {(() => {
-                    const ref = healthyReference(history, movement, healthy, todayISO());
-                    return ref ? `Son sağlam taraf ölçümü ${formatLongTR(ref.lastDate)}; 30 günden eski.` : 'Bu hareket için sağlam taraf verisi yok.';
-                  })()}{' '}
-                  Simetri hesabı için gerekli.
+                  Bu hareket için sağlam taraf verisi yok. Bir kez ölçmen yeterli; tüm ölçümlerde kullanılır.
                 </div>
               </div>
             </div>
@@ -505,10 +514,10 @@ export function Rom() {
       </section>
 
       <h2 class="section-title">
-        Son ölçümler · {SIDE_LABEL[side]} · {TIMING_SHORT[timing]}
+        Son ölçümler · {SIDE_LABEL[side]} · {isHealthy ? 'sağlam taraf' : TIMING_SHORT[timing]}
       </h2>
       {recent.length === 0 ? (
-        <div class="empty">Henüz {TIMING_LABEL[timing].toLocaleLowerCase('tr')} ölçümü yok.</div>
+        <div class="empty">{isHealthy ? 'Sağlam taraf henüz ölçülmedi.' : `Henüz ${TIMING_LABEL[timing].toLocaleLowerCase('tr')} ölçümü yok.`}</div>
       ) : (
         <ul class="list card">
           {recent.map((m) => (
